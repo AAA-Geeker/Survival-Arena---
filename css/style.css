@@ -254,7 +254,7 @@ body {
   line-height: 1.8;
   font-size: 0.9rem;
 }
-.hud-right .coin-display { color: var(--gold); }
+.hud-right .star-display { color: var(--gold); }
 .hud-right .gem-display { color: var(--gem); }
 .hud-bottom {
   position: fixed;
@@ -351,7 +351,7 @@ body {
   0% { opacity:1; transform: translateY(0); }
   100% { opacity:0; transform: translateY(-40px); }
 }
-.coin-float {
+.star-float {
   position: absolute;
   font-weight: 900;
   font-size: 0.9rem;
@@ -558,6 +558,42 @@ body {
   max-width: 480px;
 }
 
+/* Badges */
+.perm-badge {
+  background: var(--accent);
+  color: #000;
+  font-size: 0.6rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 700;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.lvl-badge {
+  background: var(--gold);
+  color: #000;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 700;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* Death progression hint */
+.death-progress {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(240,192,64,0.08);
+  border: 1px solid rgba(240,192,64,0.2);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--gold);
+  animation: fadeInUp 0.4s ease;
+}
+.death-progress strong { color: #fff; }
+
 /* Weapon Indicator in HUD */
 .weapon-indicator {
   margin-top: 6px;
@@ -596,7 +632,82 @@ body {
 .skin-card .skin-name { font-size: 0.8rem; font-weight: 700; }
 .skin-card .skin-price { font-size: 0.7rem; color: var(--gem); }
 
-/* Friend Modal */
+/* Friend Modal - Two-Step Verification Flow */
+.friend-content {
+  max-width: 480px;
+}
+
+/* Step Indicator */
+.verify-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 20px;
+  padding: 0 20px;
+}
+.verify-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  transition: all 0.3s;
+}
+.verify-step.active {
+  color: var(--accent);
+}
+.verify-step.done {
+  color: var(--accent);
+}
+.verify-step .step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+.verify-step.active .step-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(22,199,154,0.4);
+}
+.verify-step.done .step-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.step-line {
+  width: 50px;
+  height: 2px;
+  background: rgba(255,255,255,0.1);
+  margin: 0 10px;
+  margin-bottom: 20px;
+  transition: all 0.3s;
+  border-radius: 1px;
+}
+.step-line.done {
+  background: var(--accent);
+}
+
+/* Share Step Content */
+.share-step-content {
+  animation: fadeInUp 0.3s ease;
+}
+.share-instruction {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
 .share-link-container {
   display: flex;
   gap: 8px;
@@ -611,12 +722,264 @@ body {
   color: white;
   font-size: 0.8rem;
 }
-.btn-copy { background: var(--accent); font-size: 0.85rem; padding: 10px 16px; }
-.friend-reward { color: var(--accent); margin: 8px 0; }
-.share-buttons { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
-.share-buttons .btn { font-size: 0.85rem; padding: 10px 16px; max-width: none; }
-.btn-share-wechat { background: #07c160; }
-.btn-share-qq { background: #12b7f5; }
+.btn-copy {
+  background: var(--accent);
+  font-size: 0.85rem;
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+.btn-copy.copied {
+  background: #27ae60;
+}
+
+/* Share Action Buttons */
+.share-actions-row {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+}
+.btn-share-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: white;
+  transition: all 0.2s;
+  max-width: none;
+}
+.btn-share-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.btn-share-action.shared {
+  opacity: 0.7;
+  position: relative;
+}
+.btn-share-action.shared::after {
+  content: ' ✓';
+  color: #fff;
+  font-weight: 900;
+}
+.btn-share-action[data-share="wechat"] { background: #07c160; }
+.btn-share-action[data-share="qq"] { background: #12b7f5; }
+.share-icon { font-size: 1.1rem; }
+
+/* Share Status */
+.share-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: 10px 0;
+}
+.share-status.done {
+  color: var(--accent);
+  background: rgba(22,199,154,0.1);
+}
+.status-icon { font-size: 1rem; }
+
+.friend-reward {
+  color: var(--accent);
+  margin: 10px 0;
+  font-size: 0.85rem;
+}
+
+/* Verify Card */
+.verify-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+.verify-icon {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  animation: pulse 1s ease infinite alternate;
+}
+.verify-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+.verify-desc {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+/* Verify Status */
+.verify-status {
+  margin-bottom: 14px;
+}
+.verify-status-text {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.verify-status.checking .verify-status-text {
+  color: var(--gold);
+}
+
+/* Verify Button */
+.btn-verify {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  font-size: 1.05rem;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  color: white;
+  font-weight: 700;
+  transition: all 0.2s;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  display: block;
+}
+.btn-verify:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(52,152,219,0.4);
+}
+.btn-verify:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-verify.checking {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+.btn-verify.verified {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+
+/* Spinner for verification */
+.verify-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Verify Result */
+.verify-result {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+.verify-result.success {
+  background: rgba(39,174,96,0.15);
+  border: 1px solid rgba(39,174,96,0.3);
+}
+.verify-result.fail {
+  background: rgba(231,76,60,0.1);
+  border: 1px solid rgba(231,76,60,0.2);
+}
+.verify-result-icon {
+  font-size: 2rem;
+  margin-bottom: 4px;
+}
+.verify-result-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Revive Success Button */
+.btn-revive-success {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  margin: 14px auto 0;
+  padding: 14px 24px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  color: white;
+  background: linear-gradient(135deg, #e94560, #c0392b);
+  transition: all 0.2s;
+  animation: pulse 0.8s ease infinite alternate;
+}
+.btn-revive-success:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(233,69,96,0.5);
+}
+
+/* Verify Rewards */
+.verify-rewards {
+  background: rgba(240,192,64,0.08);
+  border: 1px solid rgba(240,192,64,0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  text-align: center;
+}
+.verify-reward-title {
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+.verify-reward-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.verify-reward-list span {
+  background: rgba(255,255,255,0.08);
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Bottom Navigation */
+.friend-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+.friend-nav .btn {
+  flex: 1;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.btn-step-next {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+}
+.btn-step-next:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-step-nav {
+  background: #555;
+}
 
 /* Ad Modal */
 .ad-timer-bar {
@@ -823,6 +1186,144 @@ body {
   transition: all 0.2s;
 }
 .btn-logout:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Leaderboard */
+.leaderboard-content { max-width: 500px; }
+.rank-display {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+}
+.rank-progress-container {
+  width: 100%;
+  height: 20px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 18px;
+  position: relative;
+}
+.rank-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  border-radius: 10px;
+  transition: width 0.5s;
+}
+.rank-progress-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+.lb-section {
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.lb-section h3 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: var(--gold);
+}
+.lb-stats-row {
+  display: flex;
+  gap: 16px;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.lb-stats-row strong { color: var(--gold); }
+
+.lb-history {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.lb-empty {
+  color: var(--text-dim);
+  text-align: center;
+  padding: 16px;
+  font-size: 0.85rem;
+}
+.lb-record {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.lb-record:nth-child(1) { background: rgba(255,215,0,0.08); }
+.lb-record:nth-child(2) { background: rgba(192,192,192,0.06); }
+.lb-record:nth-child(3) { background: rgba(205,127,50,0.05); }
+.lb-record .lb-rank { font-weight: 900; font-size: 1rem; min-width: 30px; }
+.lb-record .lb-detail { flex: 1; margin: 0 8px; }
+.lb-record .lb-score { font-weight: 700; color: var(--gold); }
+
+.lb-achievements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lb-achievement {
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  text-align: center;
+  min-width: 70px;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.2s;
+}
+.lb-achievement.unlocked { border-color: var(--gold); background: rgba(240,192,64,0.1); }
+.lb-achievement.locked { opacity: 0.35; filter: grayscale(1); }
+.lb-achievement .ach-icon { font-size: 1.3rem; display: block; }
+.lb-achievement .ach-name { font-size: 0.65rem; color: var(--text-dim); }
+.lb-achievement.unlocked .ach-name { color: var(--gold); }
+
+/* Menu rank display */
+.menu-rank-display {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  display: inline-block;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.btn-leaderboard { background: linear-gradient(135deg, #f39c12, #e67e22); }
+
+/* Shop Sections */
+.shop-section {
+  margin-bottom: 14px;
+}
+.shop-section h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text);
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.shop-rate-info {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.05);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
 
 /* Responsive */
 @media (max-width: 600px) {
