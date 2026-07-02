@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Survival Arena - 生存竞技场</title>
 <link rel="stylesheet" href="css/style.css">
+	<!-- Monetag Ad SDK — replace data-site-id with your real ID from monetag.com -->
+	<script src="https://www.monetag.com/sdk.js" data-site-id="YOUR_SITE_ID" async></script>
+	<!-- Monetag → AdManager adapter (must load before game.js) -->
+	<script src="js/ads-monetag.js"></script>
 </head>
 <body>
 
@@ -75,9 +79,11 @@
         <span>🪙 金币: <strong id="menu-coins">0</strong></span>
         <span>💎 钻石: <strong id="menu-gems">0</strong></span>
       </div>
+      <div class="menu-rank-display" id="menu-rank">🥉 青铜战士</div>
       <button class="btn btn-play" id="btn-play">⚔️ 开始战斗</button>
-      <button class="btn btn-shop" id="btn-shop-menu">🛒 升级商店</button>
+      <button class="btn btn-shop" id="btn-shop-menu">⭐ 装备与升级</button>
       <button class="btn btn-daily" id="btn-daily">🎁 每日奖励</button>
+      <button class="btn btn-leaderboard" id="btn-leaderboard">🏆 排行榜</button>
       <button class="btn btn-skins" id="btn-skins">🎨 皮肤</button>
       <div class="menu-user-info">
         <span id="menu-user-display"></span>
@@ -109,7 +115,7 @@
         </div>
         <div class="hud-right">
           <div class="score-display">🏆 <span id="score-display">0</span></div>
-          <div class="coin-display">🪙 <span id="coin-display-hud">0</span></div>
+          <div class="star-display">⭐ <span id="star-display-hud">0</span></div>
           <div class="gem-display">💎 <span id="gem-display-hud">0</span></div>
         </div>
       </div>
@@ -130,8 +136,9 @@
     <div class="overlay-content pause-content">
       <h2>⏸️ 游戏暂停</h2>
       <div class="pause-currency">
-        <span>🪙 <strong id="pause-coins">0</strong></span>
-        <span>💎 <strong id="pause-gems">0</strong></span>
+        <span>⭐ 星星: <strong id="pause-stars">0</strong></span>
+        <span>🪙 金币: <strong id="pause-coins">0</strong></span>
+        <span>💎 钻石: <strong id="pause-gems">0</strong></span>
       </div>
       <div class="pause-tabs">
         <button class="pause-tab active" data-pause-tab="weapons">🔫 武器</button>
@@ -152,7 +159,7 @@
         <p>🏆 得分: <strong id="death-score">0</strong></p>
         <p>🌊 到达第 <strong id="death-wave">1</strong> 波</p>
         <p>💀 击杀数: <strong id="death-kills">0</strong></p>
-        <p>🪙 获得金币: <strong id="death-coins">0</strong></p>
+        <p>⭐ 获得星星: <strong id="death-stars">0</strong></p>
       </div>
       <div class="revive-options">
         <p class="revive-prompt">想要复活吗？</p>
@@ -171,29 +178,30 @@
       </div>
       <button class="btn btn-death-quit" id="btn-death-quit">🏳️ 放弃</button>
       <p class="small-hint" id="death-hint"></p>
+      <p class="death-progress hidden" id="death-progress"></p>
     </div>
   </div>
 
   <!-- Shop Screen -->
   <div id="shop-screen" class="screen overlay hidden">
     <div class="overlay-content shop-content">
-      <h2>🛒 升级商店</h2>
+      <h2>商店</h2>
       <div class="shop-currency">
-        <span>🪙 <strong id="shop-coins">0</strong></span>
-        <span>💎 <strong id="shop-gems">0</strong></span>
+        <span>金币: <strong id="shop-coins">0</strong></span>
+        <span>钻石: <strong id="shop-gems">0</strong></span>
+        <span class="shop-rate-info">1 = 10</span>
       </div>
-      <div class="shop-items" id="shop-items"></div>
-      <div class="shop-premium">
-        <h3>💎 钻石商城</h3>
-        <div class="premium-items" id="premium-items"></div>
-        <h3>🪙 金币商城</h3>
-        <div class="coin-shop-items" id="coin-shop-items"></div>
-      </div>
-      <button class="btn btn-back" id="btn-shop-back">↩️ 返回</button>
+      <div class="shop-section" id="shop-iap"></div>
+      <div class="shop-section" id="shop-coin-exchange"></div>
+      <div class="shop-section" id="shop-upgrades"></div>
+      <div class="shop-section" id="shop-star-exchange"></div>
+      <div class="shop-section" id="shop-weapons"></div>
+      <div class="shop-section" id="shop-premium"></div>
+      <button class="btn btn-back" id="btn-shop-back">返回</button>
     </div>
   </div>
 
-  <!-- Daily Reward Screen -->
+<!-- Daily Reward Screen -->
   <div id="daily-screen" class="screen overlay hidden">
     <div class="overlay-content daily-content">
       <h2>🎁 每日奖励</h2>
@@ -212,21 +220,82 @@
     </div>
   </div>
 
-  <!-- Friend Revive Modal -->
+  <!-- Friend Revive Modal - Two-Step Verification Flow -->
   <div id="friend-modal" class="screen overlay hidden">
     <div class="overlay-content friend-content">
-      <h2>👥 邀请好友为你复活</h2>
-      <p>分享以下链接给好友，当好友点击链接并开始游戏后，你将获得复活！</p>
-      <div class="share-link-container">
-        <input type="text" id="share-link" readonly>
-        <button class="btn btn-copy" id="btn-copy-link">📋 复制链接</button>
+      <h2>👥 分享复活</h2>
+
+      <!-- Step Indicator -->
+      <div class="verify-steps">
+        <div class="verify-step active" data-step="1">
+          <div class="step-dot">1</div>
+          <span>分享链接</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="verify-step" data-step="2">
+          <div class="step-dot">2</div>
+          <span>核验复活</span>
+        </div>
       </div>
-      <p class="friend-reward">🎁 好友也将获得 <strong>50 金币</strong> 奖励！</p>
-      <div class="share-buttons">
-        <button class="btn btn-share-wechat" id="btn-share-wechat">💬 微信分享</button>
-        <button class="btn btn-share-qq" id="btn-share-qq">🐧 QQ分享</button>
+
+      <!-- Step 1: Share -->
+      <div class="share-step-content" id="share-step-1">
+        <p class="share-instruction">将链接分享给好友，好友点击进入游戏后即可为你复活</p>
+        <div class="share-link-container">
+          <input type="text" id="share-link" readonly>
+          <button class="btn btn-copy" id="btn-copy-link">📋 复制链接</button>
+        </div>
+        <div class="share-actions-row">
+          <button class="btn btn-share-action" id="btn-share-wechat" data-share="wechat">
+            <span class="share-icon">💬</span> 微信分享
+          </button>
+          <button class="btn btn-share-action" id="btn-share-qq" data-share="qq">
+            <span class="share-icon">🐧</span> QQ分享
+          </button>
+        </div>
+        <div class="share-status" id="share-status">
+          <span class="status-icon">⏳</span> 请完成分享后进入下一步
+        </div>
+        <p class="friend-reward">🎁 好友将获得 <strong>50 金币</strong> 奖励！</p>
       </div>
-      <button class="btn btn-back" id="btn-friend-back">↩️ 返回</button>
+
+      <!-- Step 2: Verify -->
+      <div class="share-step-content hidden" id="share-step-2">
+        <div class="verify-card">
+          <div class="verify-icon" id="verify-icon">🔍</div>
+          <h3>核验分享结果</h3>
+          <p class="verify-desc">点击下方按钮检查好友是否已通过你的链接进入游戏</p>
+          <div class="verify-status" id="verify-status">
+            <span class="verify-status-text">等待核验中...</span>
+          </div>
+          <button class="btn btn-verify" id="btn-verify-share">
+            <span id="btn-verify-text">🔍 核验分享</span>
+          </button>
+          <div class="verify-result hidden" id="verify-result">
+            <div class="verify-result-icon"></div>
+            <p class="verify-result-text"></p>
+          </div>
+          <button class="btn btn-revive-success hidden" id="btn-revive-success">
+            🎉 确认复活！
+          </button>
+        </div>
+        <div class="verify-rewards">
+          <p class="verify-reward-title">🎁 复活奖励</p>
+          <div class="verify-reward-list">
+            <span>❤️ 满血复活</span>
+            <span>🛡️ 3秒无敌护盾</span>
+            <span>🪙 +50 金币</span>
+            <span>💎 +5 钻石</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Navigation -->
+      <div class="friend-nav">
+        <button class="btn btn-step-nav hidden" id="btn-prev-step">⬅️ 上一步</button>
+        <button class="btn btn-back" id="btn-friend-back">↩️ 返回</button>
+        <button class="btn btn-step-next" id="btn-next-step" disabled>下一步 ➡️</button>
+      </div>
     </div>
   </div>
 
@@ -244,6 +313,55 @@
         <p>🎮 你的广告在这里</p>
         <p class="small">联系投放: ads@survival-arena.com</p>
       </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Screen -->
+  <div id="leaderboard-screen" class="screen overlay hidden">
+    <div class="overlay-content leaderboard-content">
+      <h2>🏆 排行榜</h2>
+
+      <!-- Rank Display -->
+      <div class="rank-display" id="rank-display"></div>
+      <div class="rank-progress-container">
+        <div class="rank-progress-bar" id="rank-progress-bar"></div>
+        <span class="rank-progress-text" id="rank-progress-text"></span>
+      </div>
+
+      <!-- Personal Bests -->
+      <div class="lb-section">
+        <h3>📊 个人最佳</h3>
+        <div class="lb-stats-row">
+          <span>🏆 最高分: <strong id="lb-high-score">0</strong></span>
+          <span>🌊 最高波次: <strong id="lb-high-wave">0</strong></span>
+        </div>
+        <div class="lb-stats-row">
+          <span>💀 总击杀: <strong id="lb-total-kills">0</strong></span>
+          <span>📅 连签: <strong id="lb-streak">0</strong> 天</span>
+        </div>
+      </div>
+
+      <!-- Score History -->
+      <div class="lb-section">
+        <h3>📜 战绩记录</h3>
+        <div class="lb-history" id="lb-history">
+          <p class="lb-empty">还没有战绩，快去战斗吧！⚔️</p>
+        </div>
+      </div>
+
+      <!-- Achievements -->
+      <div class="lb-section">
+        <h3>🏅 成就徽章</h3>
+        <div class="lb-achievements" id="lb-achievements"></div>
+      </div>
+
+      <!-- Daily Challenge -->
+      <div class="lb-section" id="lb-daily-section">
+        <h3>🎯 每日挑战</h3>
+        <p id="lb-daily-info">今日目标: --</p>
+      </div>
+
+      <button class="btn btn-back" id="btn-leaderboard-back">↩️ 返回</button>
     </div>
   </div>
 

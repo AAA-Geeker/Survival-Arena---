@@ -31,7 +31,7 @@ const Sound = {
   waveClear() { this.play(500, 'sine', 0.15, 0.2); setTimeout(()=>this.play(700,'sine',0.15,0.2),100); },
   bossAlert() { this.play(80, 'sawtooth', 0.3, 0.5); },
   dash() { this.play(200, 'triangle', 0.08, 0.08, 400); },
-  coin() { this.play(1200, 'sine', 0.05, 0.06); },
+  star() { this.play(1200, 'sine', 0.05, 0.06); },
   death() { this.play(60, 'sawtooth', 0.3, 0.6, -40); },
   revive() { this.play(400, 'sine', 0.15, 0.3); setTimeout(()=>this.play(700,'sine',0.15,0.3),150); },
 };
@@ -252,11 +252,286 @@ const CFG = {
   ENEMY_SPAWN_MARGIN: 60,
   WAVE_DELAY: 2000,
   POWERUP_DROP_CHANCE: 0.15,
-  COIN_DROP_CHANCE: 0.4,
-  COIN_MAGNET_RANGE: 120,
+  STAR_DROP_CHANCE: 0.4,
+  MAGNET_RANGE: 120,
   AD_DURATION: 15,
   MAX_REVIVES_PER_RUN: 1,
 };
+
+// ============================================================
+// AD MANAGER - Pluggable Ad Provider System
+// ============================================================
+// Supports: Simulated (dev), WeChat Mini Game, Web SDK (Monetag/etc.)
+// Usage:
+//   AdManager.showRewardedVideo({
+//     onComplete: () => { /* reward user */ },
+//     onError: (err) => { /* fallback */ },
+//     onSkip: () => { /* user skipped */ },
+//   });
+// ============================================================
+
+const AdManager = {
+  _provider: null,       // current provider instance
+  _providerName: 'simulated',
+  _initialized: false,
+  _adInProgress: false,
+
+  // --- Detect environment ---
+  detectEnv() {
+    if (typeof wx !== 'undefined' && typeof wx.createRewardedVideoAd === 'function') {
+      return 'wechat';   // WeChat Mini Game
+    }
+    // Check for custom web ad SDK (set by integrator)
+    if (window.__AD_PROVIDER__ && window.__AD_PROVIDER__.showRewardedVideo) {
+      return 'web_sdk';
+    }
+    return 'simulated';
+  },
+
+  // --- Initialize with optional provider override ---
+  init(providerName) {
+    if (this._initialized) return;
+    this._providerName = providerName || this.detectEnv();
+    console.log('[AdManager] Initializing provider:', this._providerName);
+
+    switch (this._providerName) {
+      case 'wechat':
+        this._provider = new WeChatAdProvider();
+        break;
+      case 'web_sdk':
+        this._provider = window.__AD_PROVIDER__;
+        break;
+      default:
+        this._provider = new SimulatedAdProvider();
+    }
+
+    this._provider.init();
+    this._initialized = true;
+  },
+
+  // --- Show rewarded video ad ---
+  // callbacks: { onComplete, onError, onSkip, onStart }
+  showRewardedVideo(callbacks = {}) {
+    if (this._adInProgress) {
+      console.warn('[AdManager] Ad already in progress');
+      (callbacks.onError || (() => {}))('Ad in progress');
+      return;
+    }
+    if (!this._initialized) this.init();
+
+    this._adInProgress = true;
+    const provider = this._provider;
+
+    // Wrap callbacks to manage state
+    const wrapped = {
+      onStart: () => {
+        if (callbacks.onStart) callbacks.onStart();
+      },
+      onComplete: () => {
+        this._adInProgress = false;
+        if (callbacks.onComplete) callbacks.onComplete();
+      },
+      onError: (err) => {
+        this._adInProgress = false;
+        console.error('[AdManager] Ad error:', err);
+        if (callbacks.onError) callbacks.onError(err);
+      },
+      onSkip: () => {
+        this._adInProgress = false;
+        if (callbacks.onSkip) callbacks.onSkip();
+      },
+    };
+
+    provider.showRewardedVideo(wrapped);
+  },
+
+  // --- Check if ad is ready ---
+  isReady() {
+    if (!this._initialized) this.init();
+    return this._provider && this._provider.isReady();
+  },
+
+  // --- Get provider name ---
+  getProviderName() {
+    return this._providerName;
+  },
+};
+
+// ============================================================
+// Provider 1: Simulated Ad (Development / Demo)
+// ============================================================
+class SimulatedAdProvider {
+  init() {
+    console.log('[SimulatedAd] Ready for dev/testing');
+  }
+
+  isReady() { return true; }
+
+  showRewardedVideo(callbacks) {
+    // Show the existing ad-modal UI
+    const game = window._gameInstance;
+    if (game) {
+      game.showScreen('ad-modal');
+      Sound.init();
+      let remaining = CFG.AD_DURATION;
+      const fill = document.getElementById('ad-timer-fill');
+      const text = document.getElementById('ad-timer-text');
+
+      if (callbacks.onStart) callbacks.onStart();
+
+      const interval = setInterval(() => {
+        remaining--;
+        const pct = ((CFG.AD_DURATION - remaining) / CFG.AD_DURATION) * 100;
+        if (fill) fill.style.width = pct + '%';
+        if (text) text.textContent = '剩余 ' + remaining + ' 秒';
+
+        if (remaining <= 0) {
+          clearInterval(interval);
+          document.getElementById('ad-modal').classList.add('hidden');
+          callbacks.onComplete();
+        }
+      }, 1000);
+
+      // Store interval for cleanup
+      this._interval = interval;
+    } else {
+      // Fallback: no UI available, just delay
+      setTimeout(() => callbacks.onComplete(), CFG.AD_DURATION * 1000);
+    }
+  }
+}
+
+// ============================================================
+// Provider 2: WeChat Mini Game Ad (Production - WeChat)
+// ============================================================
+// Integration guide:
+//   1. Deploy to WeChat Mini Game platform
+//   2. Configure ad unit ID in WeChat MP backend
+//   3. Set AD_WECHAT_UNIT_ID below
+// ============================================================
+const AD_WECHAT_UNIT_ID = 'adunit-xxxxxxxxxxxxxxxx'; // <-- Replace with real ID
+
+class WeChatAdProvider {
+  constructor() {
+    this._rewardedVideoAd = null;
+    this._callbacks = null;
+  }
+
+  init() {
+    if (typeof wx === 'undefined') {
+      console.warn('[WeChatAd] wx not found, falling back to simulated');
+      return;
+    }
+    try {
+      this._rewardedVideoAd = wx.createRewardedVideoAd({
+        adUnitId: AD_WECHAT_UNIT_ID,
+      });
+
+      this._rewardedVideoAd.onLoad(() => {
+        console.log('[WeChatAd] Rewarded video loaded');
+      });
+
+      this._rewardedVideoAd.onError((err) => {
+        console.error('[WeChatAd] Error:', err);
+        if (this._callbacks && this._callbacks.onError) {
+          this._callbacks.onError(err.errMsg || 'Ad load failed');
+        }
+      });
+
+      this._rewardedVideoAd.onClose((res) => {
+        if (res && res.isEnded) {
+          // User watched the full ad
+          if (this._callbacks && this._callbacks.onComplete) {
+            this._callbacks.onComplete();
+          }
+        } else {
+          // User closed before finishing
+          if (this._callbacks && this._callbacks.onSkip) {
+            this._callbacks.onSkip();
+          }
+        }
+      });
+
+      console.log('[WeChatAd] Initialized');
+    } catch (e) {
+      console.error('[WeChatAd] Init failed:', e);
+    }
+  }
+
+  isReady() {
+    return this._rewardedVideoAd !== null;
+  }
+
+  showRewardedVideo(callbacks) {
+    this._callbacks = callbacks;
+    if (!this._rewardedVideoAd) {
+      callbacks.onError('WeChat Ad not initialized');
+      return;
+    }
+    this._rewardedVideoAd.show().catch(() => {
+      // Ad not loaded yet, try to load first
+      this._rewardedVideoAd.load().then(() => {
+        return this._rewardedVideoAd.show();
+      }).catch((err) => {
+        callbacks.onError(err.errMsg || 'Ad show failed');
+      });
+    });
+  }
+}
+
+// ============================================================
+// Provider 3: Web SDK Ad (Monetag / PropellerAds / Custom)
+// ============================================================
+// Integration guide:
+//   1. Register at monetag.com or propellerads.com
+//   2. Add their JS SDK script to index.html <head>
+//   3. Set window.__AD_PROVIDER__ with your adapter
+//
+// Example Monetag adapter:
+//   window.__AD_PROVIDER__ = {
+//     init() { monetag.init('YOUR_SITE_ID'); },
+//     isReady() { return true; },
+//     showRewardedVideo(cb) {
+//       monetag.showRewardedVideo({
+//         onComplete: cb.onComplete,
+//         onClose: cb.onSkip,
+//         onError: cb.onError,
+//       });
+//     }
+//   };
+// ============================================================
+
+// --- Auto-init on script load ---
+AdManager.init();
+
+// --- Store game instance reference for SimulatedAdProvider ---
+// Set by game.init()
+
+// ============================================================
+// --- Rank Tiers ---
+const RANK_TIERS = [
+  { id: 'bronze',  name: '青铜战士', icon: '🥉', minWave: 1,  color: '#cd7f32' },
+  { id: 'silver',  name: '白银骑士', icon: '🥈', minWave: 5,  color: '#c0c0c0' },
+  { id: 'gold',    name: '黄金勇士', icon: '🥇', minWave: 10, color: '#ffd700' },
+  { id: 'diamond', name: '钻石英雄', icon: '💎', minWave: 15, color: '#b9f2ff' },
+  { id: 'legend',  name: '传说至尊', icon: '👑', minWave: 20, color: '#ff4500' },
+];
+
+// --- Achievements ---
+const ACHIEVEMENTS = [
+  { id: 'kill_50',    name: '初次狩猎',   desc: '累计击杀50个敌人',    icon: '🎯', check: (s) => s.totalKills >= 50 },
+  { id: 'kill_500',   name: '屠戮机器',   desc: '累计击杀500个敌人',   icon: '⚔️', check: (s) => s.totalKills >= 500 },
+  { id: 'kill_2000',  name: '死神降临',   desc: '累计击杀2000个敌人',  icon: '💀', check: (s) => s.totalKills >= 2000 },
+  { id: 'wave_5',     name: '初露锋芒',   desc: '到达第5波',          icon: '🌊', check: (s) => s.highestWave >= 5 },
+  { id: 'wave_10',    name: '身经百战',   desc: '到达第10波',         icon: '🔥', check: (s) => s.highestWave >= 10 },
+  { id: 'wave_20',    name: '无双战将',   desc: '到达第20波',         icon: '⚡', check: (s) => s.highestWave >= 20 },
+  { id: 'score_1k',   name: '千分猎手',   desc: '单局得分突破1000',    icon: '🏆', check: (s) => s.highScore >= 1000 },
+  { id: 'score_5k',   name: '精英杀手',   desc: '单局得分突破5000',    icon: '🌟', check: (s) => s.highScore >= 5000 },
+  { id: 'combo_10',   name: '连杀高手',   desc: '达成10连杀',         icon: '💥', check: (s) => (s._maxComboEver || 0) >= 10 },
+  { id: 'combo_30',   name: '战场风暴',   desc: '达成30连杀',         icon: '🌪️', check: (s) => s._maxComboEver >= 30 },
+  { id: 'weapon_all', name: '武器大师',   desc: '解锁全部4种武器',     icon: '🔫', check: (s) => Object.values(s.ownedWeapons||{}).filter(w=>w.owned).length >= 4 },
+  { id: 'daily_7',    name: '坚持不懈',   desc: '连续签到7天',         icon: '📅', check: (s) => s.dailyStreak >= 6 },
+];
 
 // --- Weapon Types ---
 const WEAPONS = {
@@ -266,6 +541,12 @@ const WEAPONS = {
     damageMult: 1.0, fireRateMult: 1.0, spread: 0, pellets: 1,
     bulletColor: '#ffeb3b', bulletSize: 3,
     cost: 0, gemCost: 0,
+    unlockCost: 0, unlockGemCost: 0,  // pistol always free
+    upgradePaths: [
+      { id: 'damageLvl', name: '伤害', icon: '💥', maxLevel: 10, perLevel: 0.08, desc: '+8% 伤害/级' },
+      { id: 'fireRateLvl', name: '射速', icon: '🎯', maxLevel: 10, perLevel: 0.06, desc: '+6% 射速/级' },
+      { id: 'ammoLvl', name: '弹药', icon: '🔫', maxLevel: 10, perLevel: 1, desc: '+1 弹丸/级' },
+    ],
   },
   shotgun: {
     id: 'shotgun', name: '霰弹枪', icon: '💥',
@@ -273,6 +554,12 @@ const WEAPONS = {
     damageMult: 0.35, fireRateMult: 0.5, spread: 0.15, pellets: 5,
     bulletColor: '#ff9800', bulletSize: 2.5,
     cost: 50, gemCost: 3,
+    unlockCost: 200, unlockGemCost: 8,
+    upgradePaths: [
+      { id: 'damageLvl', name: '伤害', icon: '💥', maxLevel: 10, perLevel: 0.08, desc: '+8% 伤害/级' },
+      { id: 'fireRateLvl', name: '射速', icon: '🎯', maxLevel: 10, perLevel: 0.05, desc: '+5% 射速/级' },
+      { id: 'spreadLvl', name: '精准', icon: '🎯', maxLevel: 10, perLevel: 0.06, desc: '-6% 散射/级' },
+    ],
   },
   smg: {
     id: 'smg', name: '冲锋枪', icon: '⚡',
@@ -280,6 +567,12 @@ const WEAPONS = {
     damageMult: 0.55, fireRateMult: 2.8, spread: 0.06, pellets: 1,
     bulletColor: '#4fc3f7', bulletSize: 2,
     cost: 80, gemCost: 5,
+    unlockCost: 350, unlockGemCost: 12,
+    upgradePaths: [
+      { id: 'damageLvl', name: '伤害', icon: '💥', maxLevel: 10, perLevel: 0.07, desc: '+7% 伤害/级' },
+      { id: 'fireRateLvl', name: '射速', icon: '🎯', maxLevel: 10, perLevel: 0.07, desc: '+7% 射速/级' },
+      { id: 'accuracyLvl', name: '精度', icon: '🎯', maxLevel: 10, perLevel: 0.08, desc: '-8% 散布/级' },
+    ],
   },
   sniper: {
     id: 'sniper', name: '狙击枪', icon: '🎯',
@@ -287,16 +580,22 @@ const WEAPONS = {
     damageMult: 3.0, fireRateMult: 0.35, spread: 0, pellets: 1,
     bulletColor: '#ff1744', bulletSize: 5,
     cost: 120, gemCost: 8,
+    unlockCost: 500, unlockGemCost: 20,
+    upgradePaths: [
+      { id: 'damageLvl', name: '伤害', icon: '💥', maxLevel: 10, perLevel: 0.10, desc: '+10% 伤害/级' },
+      { id: 'fireRateLvl', name: '射速', icon: '🎯', maxLevel: 10, perLevel: 0.05, desc: '+5% 射速/级' },
+      { id: 'pierceLvl', name: '穿透', icon: '💢', maxLevel: 10, perLevel: 0.15, desc: '+15% 子弹/级' },
+    ],
   },
 };
 
 // --- In-Run Power-Up Shop Items ---
 const IN_RUN_POWERUPS = [
-  { id: 'health',  name: '生命恢复', desc: '立即恢复 30 HP',            icon: '❤️',  cost: 25,  apply: (p) => { p.heal(30); } },
-  { id: 'shield',  name: '护盾',      desc: '获得 10 秒护盾保护',       icon: '🛡️',  cost: 40,  apply: (p) => { p.shieldActive = 10000; } },
-  { id: 'speed',   name: '速度提升',  desc: '8 秒内移动速度 +50%',      icon: '⚡',  cost: 25,  apply: (p) => { p.speedBoost = 8000; } },
-  { id: 'damage',  name: '双倍伤害',  desc: '8 秒内造成双倍伤害',       icon: '💥',  cost: 50,  apply: (p) => { p.damageBoost = 8000; } },
-  { id: 'magnet',  name: '金币磁铁',  desc: '10 秒内自动吸取附近金币',  icon: '🧲',  cost: 35,  apply: (p) => { p.magnetActive = 10000; } },
+  { id: 'health',  name: '生命恢复', desc: '立即恢复 30 HP',            icon: '❤️',  cost: 30,  apply: (p) => { p.heal(30); } },
+  { id: 'shield',  name: '护盾',      desc: '获得 10 秒护盾保护',       icon: '🛡️',  cost: 45,  apply: (p) => { p.shieldActive = 10000; } },
+  { id: 'speed',   name: '速度提升',  desc: '8 秒内移动速度 +50%',      icon: '⚡',  cost: 30,  apply: (p) => { p.speedBoost = 8000; } },
+  { id: 'damage',  name: '双倍伤害',  desc: '8 秒内造成双倍伤害',       icon: '💥',  cost: 60,  apply: (p) => { p.damageBoost = 8000; } },
+  { id: 'magnet',  name: '星星磁铁',  desc: '10 秒内自动吸取附近星星',  icon: '🧲',  cost: 40,  apply: (p) => { p.magnetActive = 10000; } },
 ];
 
 // --- Utility Functions ---
@@ -382,7 +681,7 @@ const POWERUP_TYPES = [
   { id: 'damage', icon: '💥', color: '#ff9800', effect: (p) => { p.damageBoost = 5000; }, text: '伤害x2!' },
   { id: 'shield', icon: '🛡️', color: '#4fc3f7', effect: (p) => { p.shieldActive = 4000; }, text: '护盾!' },
   { id: 'magnet', icon: '🧲', color: '#ba68c8', effect: (p) => { p.magnetActive = 8000; }, text: '吸金!' },
-  { id: 'coinbag', icon: '💰', color: '#ffd700', effect: (p,g) => { g.coins += 25; }, text: '+25 金币' },
+  { id: 'starbag', icon: '💰', color: '#ffd700', effect: (p,g) => { g.stars += 25; }, text: '+25 星星' },
   { id: 'gem', icon: '💎', color: '#a855f7', effect: (p,g) => { g.gems += 1; }, text: '+1 钻石', rare: true },
 ];
 
@@ -424,40 +723,70 @@ class PowerUp {
 
 let powerups = [];
 
-// --- Coin ---
-class Coin {
+// --- Star ---
+class Star {
   constructor(x, y, value = 1) {
     this.x = x; this.y = y;
     this.value = value;
-    this.radius = 6;
+    this.radius = 8;
     this.life = 15000;
     this.elapsed = 0;
+    this.rotation = rand(0, Math.PI * 2);
+    this.bobOffset = rand(0, Math.PI * 2);
   }
   update(dt) {
     this.elapsed += dt * 1000;
+    this.rotation += dt * 2.5;
+    this.bobOffset += dt * 3;
   }
   get dead() { return this.elapsed >= this.life; }
   get blinkWarning() { return this.elapsed > this.life * 0.7; }
   draw(ctx) {
     const alpha = this.blinkWarning ? 0.3 + Math.sin(this.elapsed * 0.04) * 0.3 : 1;
+    const yBob = Math.sin(this.bobOffset) * 2;
+    ctx.save();
     ctx.globalAlpha = alpha;
+    ctx.translate(this.x, this.y + yBob);
+    ctx.rotate(this.rotation);
+
+    // Draw 5-pointed star
+    const spikes = 5;
+    const outerR = this.radius + (this.value > 5 ? 3 : 0);
+    const innerR = outerR * 0.45;
     ctx.fillStyle = '#ffd700';
     ctx.shadowColor = '#ffd700';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 10 + (this.value > 5 ? 6 : 0);
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    for (let i = 0; i < spikes * 2; i++) {
+      const r = i % 2 === 0 ? outerR : innerR;
+      const a = (i * Math.PI) / spikes - Math.PI / 2;
+      if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
     ctx.fill();
+
+    // White core highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 8px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('$', this.x, this.y);
-    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, innerR * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Value text for large stars
+    if (this.value >= 10) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 7px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.value, 0, 0);
+    }
+
+    ctx.restore();
   }
 }
 
-let coins = [];
+let starsArr = [];
 
 // --- Enemy Types ---
 const ENEMY_TYPES = {
@@ -717,19 +1046,23 @@ class Player {
 
   shoot(target) {
     const weapon = WEAPONS[this.weaponType] || WEAPONS.pistol;
+    const eff = game.getEffectiveWeaponStats(this.weaponType);
     const baseAngle = angle(this, target);
-    const totalDmg = this.baseDamage * this.damageMult * weapon.damageMult;
+    const totalDmg = this.baseDamage * this.damageMult * eff.damageMult;
+    const pellets = eff.pellets;
+    const spread = eff.spread;
+    const bulletSize = eff.bulletSize;
 
     // Fire pellets with spread
-    for (let i = 0; i < weapon.pellets; i++) {
+    for (let i = 0; i < pellets; i++) {
       let pelletAngle = baseAngle;
-      if (weapon.spread > 0 && weapon.pellets > 1) {
+      if (spread > 0 && pellets > 1) {
         // Even fan spread for multi-pellet weapons
-        const offset = (i - (weapon.pellets - 1) / 2) * weapon.spread;
+        const offset = (i - (pellets - 1) / 2) * spread;
         pelletAngle = baseAngle + offset;
-      } else if (weapon.spread > 0) {
+      } else if (spread > 0) {
         // Random inaccuracy for single-pellet spread weapons
-        pelletAngle = baseAngle + (Math.random() - 0.5) * weapon.spread * 2;
+        pelletAngle = baseAngle + (Math.random() - 0.5) * spread * 2;
       }
       const bx = this.x + Math.cos(pelletAngle) * (this.radius + 4);
       const by = this.y + Math.sin(pelletAngle) * (this.radius + 4);
@@ -740,7 +1073,7 @@ class Player {
         totalDmg,
         weapon.bulletColor,
         false,
-        weapon.bulletSize
+        bulletSize
       ));
     }
     Sound.shoot();
@@ -748,8 +1081,8 @@ class Player {
 
   tryShoot(target) {
     const now = performance.now();
-    const weapon = WEAPONS[this.weaponType] || WEAPONS.pistol;
-    const effectiveFireRate = this.fireRate / weapon.fireRateMult;
+    const eff = game.getEffectiveWeaponStats(this.weaponType);
+    const effectiveFireRate = this.fireRate / eff.fireRateMult;
     if (now - this.lastShot >= effectiveFireRate) {
       this.shoot(target);
       this.lastShot = now;
@@ -830,7 +1163,8 @@ const game = {
   player: new Player(),
   wave: 0,
   score: 0,
-  coinsEarned: 0,
+  starsEarned: 0,   // in-run stars (reset each game)
+  _coinsAtStart: 0,   // coins balance at run start
   gems: 0,
   kills: 0,
   state: 'menu', // menu, playing, paused, dead
@@ -858,20 +1192,28 @@ const game = {
 
   // Stats
   highScore: 0,
-  totalCoins: 0,
+  coins: 0,
   totalKills: 0,
+  scoreHistory: [],      // [{score, wave, kills, date}] top records
+  achievements: [],      // unlocked achievement IDs
+  highestWave: 0,        // personal best wave
 
   // Daily
   dailyStreak: 0,
   lastDailyClaim: '',
+  dailyTarget: 0,        // daily challenge score target
+  dailyTargetClaimed: false,
 
   // Revive tokens
   reviveTokens: 0,
 
-  // Weapon ownership this run & active pause tab
-  ownedWeaponsThisRun: new Set(['pistol']),
+  // Persistent weapon system
+  ownedWeapons: {},      // { pistol: {owned:true,level:1}, shotgun: {owned:false,level:1}, ... }
+  weaponUpgrades: {},    // per-weapon sub-stat levels
+  autoFireOwned: false,  // persistent auto-fire
+  equippedWeapon: 'pistol', // which weapon to start next run with
   activePauseTab: 'weapons',
-  autoFire: false,
+  autoFire: false,       // runtime auto-fire state (loaded from autoFireOwned each run)
 
   init() {
     // Load saved data
@@ -880,12 +1222,47 @@ const game = {
     });
     this.equippedSkin = Storage.get('equippedSkin', 'default');
     this.highScore = Storage.get('highScore', 0);
-    this.totalCoins = Storage.get('totalCoins', 0);
+    this.coins = Storage.get('coins', 0);
     this.totalKills = Storage.get('totalKills', 0);
     this.gems = Storage.get('gems', 0);
     this.dailyStreak = Storage.get('dailyStreak', 0);
     this.lastDailyClaim = Storage.get('lastDailyClaim', '');
     this.reviveTokens = Storage.get('reviveTokens', 0);
+    this._pendingStarBonus = Storage.get('pendingStarBonus', 0);
+
+    // --- Migration: old totalCoins -> stars ---
+    if (Storage.get('totalCoins', null) !== null && Storage.get('coins', null) === null) {
+      this.coins = Storage.get('totalCoins', 0);
+      Storage.set('coins', this.coins);
+      // We keep the old key for safety, but won't read it again
+      this.showToast('⭐ 经济系统已升级！金币已转换为星星');
+    }
+
+    // --- Load persistent weapon system ---
+    this.ownedWeapons = Storage.get('ownedWeapons', {
+      pistol:  { owned: true,  level: 1 },
+      shotgun: { owned: false, level: 1 },
+      smg:     { owned: false, level: 1 },
+      sniper:  { owned: false, level: 1 },
+    });
+    this.weaponUpgrades = Storage.get('weaponUpgrades', {
+      pistol:  { damageLvl: 0, fireRateLvl: 0, ammoLvl: 0 },
+      shotgun: { damageLvl: 0, fireRateLvl: 0, spreadLvl: 0 },
+      smg:     { damageLvl: 0, fireRateLvl: 0, accuracyLvl: 0 },
+      sniper:  { damageLvl: 0, fireRateLvl: 0, pierceLvl: 0 },
+    });
+    this.autoFireOwned = Storage.get('autoFireOwned', false);
+    this.equippedWeapon = Storage.get('equippedWeapon', 'pistol');
+
+    // Leaderboard & achievements
+    this.scoreHistory = Storage.get('scoreHistory', []);
+    this.achievements = Storage.get('achievements', []);
+    this.highestWave = Storage.get('highestWave', 0);
+    this._maxComboEver = Storage.get('maxComboEver', 0);
+    this.dailyTarget = Storage.get('dailyTarget', 0);
+    this.dailyTargetClaimed = Storage.get('dailyTargetClaimed', false);
+    this._dailyTargetDate = Storage.get('dailyTargetDate', '');
+    this.generateDailyTarget();
 
     this.skins = Storage.get('skins', [
       { id: 'default', name: '默认战士', color: '#3498db', outline: '#2980b9', owned: true, price: 0 },
@@ -906,6 +1283,9 @@ const game = {
     this.applyUpgrades();
 
     // Init canvas
+    // Register game instance for AdManager
+    window._gameInstance = this;
+
     this.resizeCanvas();
     window.addEventListener('resize', () => this.resizeCanvas());
 
@@ -964,17 +1344,29 @@ const game = {
     enemies = [];
     particles = [];
     powerups = [];
-    coins = [];
+    starsArr = [];
     this.wave = 0;
     this.score = 0;
-    this.coinsEarned = 0;
+    // Apply pending star bonus from shop purchases
+    this._pendingStarBonus = Storage.get('pendingStarBonus', 0);
+    this.starsEarned = this._pendingStarBonus;
+    this._pendingStarBonus = 0;
+    Storage.set('pendingStarBonus', 0);
+    this._coinsAtStart = this.coins;
     this.kills = 0;
     this.state = 'playing';
     this.reviveUsed = false;
     this.adWatched = false;
-    this.ownedWeaponsThisRun = new Set(['pistol']);
     this.activePauseTab = 'weapons';
-    this.autoFire = false;
+    // Load persistent equipment
+    this.autoFire = this.autoFireOwned;
+    // Equip the selected weapon (must be owned, fallback to pistol)
+    if (this.ownedWeapons[this.equippedWeapon]?.owned) {
+      this.player.weaponType = this.equippedWeapon;
+    } else {
+      this.player.weaponType = 'pistol';
+      this.equippedWeapon = 'pistol';
+    }
     this.waveCountdown = 0;
     this.waveCountdownAction = null;
     this.waveTransition = false;
@@ -1074,7 +1466,7 @@ const game = {
     const comboBonus = Math.floor(this.comboCount / 5);
     if (comboBonus > 0) {
       this.score += comboBonus;
-      this.coinsEarned += comboBonus;
+      this.starsEarned += comboBonus;
     }
 
     Sound.kill();
@@ -1089,10 +1481,10 @@ const game = {
     const comboText = comboBonus > 0 ? ` x${this.comboCount} combo!` : '';
     this.showFloatingText(enemy.x, enemy.y, `+${enemy.score}${comboText}`, '#ffd700');
 
-    // Drop coin
-    if (rng() < CFG.COIN_DROP_CHANCE) {
-      const coinVal = enemy.typeKey === 'boss' ? 10 : 1;
-      coins.push(new Coin(enemy.x, enemy.y, coinVal));
+    // Drop star
+    if (rng() < CFG.STAR_DROP_CHANCE) {
+      const starVal = enemy.typeKey === 'boss' ? 15 : 1;
+      starsArr.push(new Star(enemy.x, enemy.y, starVal));
     }
 
     // Drop power-up
@@ -1110,11 +1502,11 @@ const game = {
     if (this.enemiesRemaining <= 0 && this.state === 'playing') {
       Sound.waveClear();
       this.showFloatingText(canvas.width/2, canvas.height/2, `第 ${this.wave} 波 完成！`, '#00e676', 28);
-      // Bonus coins for wave clear
-      const bonus = this.wave * 5;
-      this.coinsEarned += bonus;
+      // Bonus stars for wave clear
+      const bonus = this.wave * 8;
+      this.starsEarned += bonus;
       this.score += bonus;
-      coins.push(new Coin(canvas.width/2, canvas.height/2 - 40, bonus));
+      starsArr.push(new Star(canvas.width/2, canvas.height/2 - 40, bonus));
 
       // Start countdown to next wave (pauses when game is paused)
       this.waveCountdown = 2000;
@@ -1161,14 +1553,22 @@ const game = {
 
   endRun() {
     this.state = 'menu';
-    this.totalCoins += this.coinsEarned;
+    // Stars already in persistent balance (no conversion needed)
     this.totalKills += this.kills;
     if (this.score > this.highScore) this.highScore = this.score;
-    Storage.set('totalCoins', this.totalCoins);
+    Storage.set('coins', this.coins);
     Storage.set('totalKills', this.totalKills);
     Storage.set('highScore', this.highScore);
     Storage.set('gems', this.gems);
     Storage.set('reviveTokens', this.reviveTokens);
+
+    // Record score + check achievements + daily target
+    this.addScoreRecord();
+    const targetReward = this.claimDailyTarget();
+    if (targetReward) {
+      this.showToast(`🎯 每日挑战达成！获得 ${targetReward.coins}🪙 + ${targetReward.gems}💎`);
+    }
+
     this.showScreen('main-menu');
     this.updateMenuStats();
   },
@@ -1182,8 +1582,8 @@ const game = {
       const claimedRefs = Storage.get('claimedRefs', []);
       if (!claimedRefs.includes(refId)) {
         // Give bonus to new player
-        this.totalCoins = Storage.get('totalCoins', 0) + 50;
-        Storage.set('totalCoins', this.totalCoins);
+        this.coins = Storage.get('coins', 0) + 50;
+        Storage.set('coins', this.coins);
         this.showToast('🎉 通过好友链接加入！获得 50 金币奖励！');
 
         // Store that someone used this referral
@@ -1225,13 +1625,13 @@ const game = {
 
   getDailyReward() {
     const rewards = [
-      { coins: 50 },
-      { coins: 100 },
-      { coins: 150, gems: 1 },
-      { coins: 200 },
-      { coins: 250, gems: 2 },
-      { coins: 300 },
-      { coins: 500, gems: 5, reviveToken: 1 },
+      { coinAmount: 50 },
+      { coinAmount: 100 },
+      { coinAmount: 150, gems: 1 },
+      { coinAmount: 200 },
+      { coinAmount: 250, gems: 2 },
+      { coinAmount: 300 },
+      { coinAmount: 500, gems: 5, reviveToken: 1 },
     ];
     return rewards[this.dailyStreak];
   },
@@ -1240,11 +1640,11 @@ const game = {
     const today = new Date().toDateString();
     if (this.lastDailyClaim === today) return null;
     const reward = this.getDailyReward();
-    if (reward.coins) this.totalCoins += reward.coins;
+    if (reward.coinAmount) this.coins += reward.coinAmount;
     if (reward.gems) this.gems += reward.gems;
     if (reward.reviveToken) this.reviveTokens += reward.reviveToken;
     this.lastDailyClaim = today;
-    Storage.set('totalCoins', this.totalCoins);
+    Storage.set('coins', this.coins);
     Storage.set('gems', this.gems);
     Storage.set('reviveTokens', this.reviveTokens);
     Storage.set('lastDailyClaim', this.lastDailyClaim);
@@ -1259,14 +1659,15 @@ const game = {
     document.getElementById('btn-shop-menu').addEventListener('click', () => this.showShop());
     document.getElementById('btn-daily').addEventListener('click', () => this.showDaily());
     document.getElementById('btn-skins').addEventListener('click', () => this.showSkins());
+    document.getElementById('btn-leaderboard').addEventListener('click', () => this.showLeaderboard());
 
-    // Click coin/gem displays to open shop
+    // Click star/gem displays to open shop
     document.getElementById('menu-coins').style.cursor = 'pointer';
     document.getElementById('menu-coins').addEventListener('click', () => this.showShop());
     document.getElementById('menu-gems').style.cursor = 'pointer';
     document.getElementById('menu-gems').addEventListener('click', () => this.showShop());
-    document.getElementById('coin-display-hud').style.cursor = 'pointer';
-    document.getElementById('coin-display-hud').addEventListener('click', () => {
+    document.getElementById('star-display-hud').style.cursor = 'pointer';
+    document.getElementById('star-display-hud').addEventListener('click', () => {
       if (this.state === 'playing') {
         this.activePauseTab = 'items';
         this.pause();
@@ -1295,13 +1696,14 @@ const game = {
     });
     document.getElementById('btn-quit').addEventListener('click', () => {
       this.state = 'menu';
-      this.totalCoins += this.coinsEarned;
+      // Stars already in persistent balance
       this.totalKills += this.kills;
       if (this.score > this.highScore) this.highScore = this.score;
-      Storage.set('totalCoins', this.totalCoins);
+      Storage.set('coins', this.coins);
       Storage.set('totalKills', this.totalKills);
       Storage.set('highScore', this.highScore);
       Storage.set('gems', this.gems);
+      this.addScoreRecord();
       this.showScreen('main-menu');
       this.updateMenuStats();
     });
@@ -1327,23 +1729,73 @@ const game = {
     });
     document.getElementById('btn-death-quit').addEventListener('click', () => this.endRun());
 
-    // Friend modal
+    // Friend modal - Two-step verification flow
     document.getElementById('btn-copy-link').addEventListener('click', () => {
       const link = this.generateShareLink();
       document.getElementById('share-link').value = link;
-      navigator.clipboard.writeText(link).then(() => this.showToast('📋 链接已复制！'));
+      navigator.clipboard.writeText(link).then(() => {
+        this.markShareCompleted('copy');
+        this.showToast('📋 链接已复制！分享给好友吧');
+      }).catch(() => {
+        // Fallback for non-HTTPS or permission denied
+        document.getElementById('share-link').select();
+        this.markShareCompleted('copy');
+        this.showToast('📋 请手动复制链接分享给好友');
+      });
     });
+
+    // WeChat share button
     document.getElementById('btn-share-wechat').addEventListener('click', () => {
       const link = this.generateShareLink();
       document.getElementById('share-link').value = link;
-      this.showToast('💬 请复制链接发送给微信好友');
+      this.markShareCompleted('wechat');
+      // Trigger WeChat share or show copy instructions
+      navigator.clipboard.writeText(link).then(() => {
+        this.showToast('💬 链接已复制！请打开微信发送给好友');
+      }).catch(() => {
+        document.getElementById('share-link').select();
+        this.showToast('💬 请复制链接并打开微信发送给好友');
+      });
     });
+
+    // QQ share button
     document.getElementById('btn-share-qq').addEventListener('click', () => {
       const link = this.generateShareLink();
       document.getElementById('share-link').value = link;
-      this.showToast('🐧 请复制链接发送给QQ好友');
+      this.markShareCompleted('qq');
+      navigator.clipboard.writeText(link).then(() => {
+        this.showToast('🐧 链接已复制！请打开QQ发送给好友');
+      }).catch(() => {
+        document.getElementById('share-link').select();
+        this.showToast('🐧 请复制链接并打开QQ发送给好友');
+      });
     });
-    document.getElementById('btn-friend-back').addEventListener('click', () => this.showScreen('death-screen'));
+
+    // Next step button
+    document.getElementById('btn-next-step').addEventListener('click', () => {
+      this.goToVerifyStep();
+    });
+
+    // Previous step button
+    document.getElementById('btn-prev-step').addEventListener('click', () => {
+      this.goToShareStep();
+    });
+
+    // Verify share button
+    document.getElementById('btn-verify-share').addEventListener('click', () => {
+      this.verifyShareRevive();
+    });
+
+    // Revive success button
+    document.getElementById('btn-revive-success').addEventListener('click', () => {
+      this.confirmReviveFromShare();
+    });
+
+    // Back button returns to death screen
+    document.getElementById('btn-friend-back').addEventListener('click', () => {
+      this.resetFriendModal();
+      this.showScreen('death-screen');
+    });
 
     // Shop back
     document.getElementById('btn-shop-back').addEventListener('click', () => {
@@ -1355,6 +1807,10 @@ const game = {
       this.updateMenuStats();
     });
     document.getElementById('btn-skins-back').addEventListener('click', () => {
+      this.showScreen('main-menu');
+      this.updateMenuStats();
+    });
+    document.getElementById('btn-leaderboard-back').addEventListener('click', () => {
       this.showScreen('main-menu');
       this.updateMenuStats();
     });
@@ -1569,37 +2025,278 @@ const game = {
     this.lastTime = performance.now();
   },
 
+  // --- Ad System (supports simulated / WeChat / Web SDK) ---
   watchAd() {
-    this.showScreen('ad-modal');
-    Sound.init();
-    let remaining = CFG.AD_DURATION;
-    const fill = document.getElementById('ad-timer-fill');
-    const text = document.getElementById('ad-timer-text');
-
-    const interval = setInterval(() => {
-      remaining--;
-      const pct = ((CFG.AD_DURATION - remaining) / CFG.AD_DURATION) * 100;
-      fill.style.width = pct + '%';
-      text.textContent = `剩余 ${remaining} 秒`;
-
-      if (remaining <= 0) {
-        clearInterval(interval);
+    AdManager.showRewardedVideo({
+      onStart: () => {
+        // Ad is now showing (modal already displayed by provider)
+      },
+      onComplete: () => {
+        // User watched the full ad -> give reward
         this.adWatched = true;
         this.revive();
         this.showToast('📺 广告观看完成！已复活');
         document.getElementById('ad-modal').classList.add('hidden');
-      }
-    }, 1000);
+      },
+      onSkip: () => {
+        // User closed the ad early -> no reward
+        document.getElementById('ad-modal').classList.add('hidden');
+        this.showToast('⚠️ 需要观看完整广告才能复活');
+      },
+      onError: (err) => {
+        // Catastrophic ad system failure (not normal no-fill)
+        // The MonetagAdProvider handles normal no-fill internally with timer
+        console.error('[Ad] 广告系统故障:', err);
+        document.getElementById('ad-modal').classList.add('hidden');
+        this.showToast('⚠️ 广告暂不可用，请稍后重试');
+        // DO NOT auto-revive — preserves revenue model integrity
+      },
+    });
   },
 
+  // --- Friend Revive Modal (Two-Step Verification Flow) ---
+
   showFriendModal() {
+    // Reset modal state
+    this._shareCompleted = false;
+    this._shareMethod = null;
+    this._verifyChecked = false;
+    this._verificationPollTimer = null;
+
+    // Reset UI
     document.getElementById('share-link').value = this.generateShareLink();
+    document.getElementById('share-step-1').classList.remove('hidden');
+    document.getElementById('share-step-2').classList.add('hidden');
+    document.getElementById('btn-next-step').classList.remove('hidden');
+    document.getElementById('btn-next-step').disabled = true;
+    document.getElementById('btn-prev-step').classList.add('hidden');
+    document.getElementById('btn-verify-share').disabled = false;
+    document.getElementById('btn-verify-text').textContent = '🔍 核验分享';
+    document.getElementById('btn-verify-share').classList.remove('checking', 'verified');
+    document.getElementById('verify-status').classList.remove('checking');
+    document.getElementById('verify-status').querySelector('.verify-status-text').textContent = '等待核验中...';
+    document.getElementById('verify-icon').textContent = '🔍';
+    document.getElementById('verify-result').classList.add('hidden');
+    document.getElementById('btn-revive-success').classList.add('hidden');
+    document.getElementById('share-status').classList.remove('done');
+    document.getElementById('share-status').querySelector('.status-icon').textContent = '⏳';
+    document.getElementById('share-status').querySelector('.status-icon').nextSibling.textContent = ' 请完成分享后进入下一步';
+
+    // Reset share action buttons
+    document.querySelectorAll('.btn-share-action').forEach(b => b.classList.remove('shared'));
+    document.getElementById('btn-copy-link').classList.remove('copied');
+
+    // Reset step indicators
+    document.querySelectorAll('.verify-step').forEach(s => {
+      s.classList.remove('active', 'done');
+    });
+    document.querySelector('.verify-step[data-step="1"]').classList.add('active');
+    document.querySelectorAll('.step-line').forEach(l => l.classList.remove('done'));
+
     this.showScreen('friend-modal');
+  },
+
+  // Mark a share action as completed
+  markShareCompleted(method) {
+    this._shareCompleted = true;
+    this._shareMethod = method;
+
+    // Update UI feedback
+    const statusEl = document.getElementById('share-status');
+    statusEl.classList.add('done');
+    statusEl.querySelector('.status-icon').textContent = '✅';
+    statusEl.querySelector('.status-icon').nextSibling.textContent = ' 分享已完成！可以进入下一步';
+
+    // Highlight the used share method
+    document.querySelectorAll('.btn-share-action').forEach(b => {
+      if (b.dataset.share === method) b.classList.add('shared');
+    });
+    if (method === 'copy') {
+      document.getElementById('btn-copy-link').classList.add('copied');
+    }
+
+    // Enable next step button
+    document.getElementById('btn-next-step').disabled = false;
+
+    // Store pending verification (would be server-side in production)
+    const pendingVerifications = Storage.get('pendingVerifications', {});
+    pendingVerifications[Storage.getPlayerId()] = {
+      time: Date.now(),
+      method: method,
+      linkUsed: false,
+    };
+    Storage.set('pendingVerifications', pendingVerifications);
+  },
+
+  // Navigate to step 2 (verify step)
+  goToVerifyStep() {
+    if (!this._shareCompleted) {
+      this.showToast('⚠️ 请先完成分享');
+      return;
+    }
+
+    // Update step indicators
+    document.querySelector('.verify-step[data-step="1"]').classList.remove('active');
+    document.querySelector('.verify-step[data-step="1"]').classList.add('done');
+    document.querySelector('.verify-step[data-step="2"]').classList.add('active');
+    document.querySelectorAll('.step-line')[0].classList.add('done');
+
+    // Switch content
+    document.getElementById('share-step-1').classList.add('hidden');
+    document.getElementById('share-step-2').classList.remove('hidden');
+    document.getElementById('btn-next-step').classList.add('hidden');
+    document.getElementById('btn-prev-step').classList.remove('hidden');
+  },
+
+  // Navigate back to step 1
+  goToShareStep() {
+    // Update step indicators
+    document.querySelector('.verify-step[data-step="2"]').classList.remove('active');
+    document.querySelector('.verify-step[data-step="1"]').classList.add('active');
+    document.querySelector('.verify-step[data-step="1"]').classList.remove('done');
+    document.querySelectorAll('.step-line')[0].classList.remove('done');
+
+    // Switch content
+    document.getElementById('share-step-2').classList.add('hidden');
+    document.getElementById('share-step-1').classList.remove('hidden');
+    document.getElementById('btn-next-step').classList.remove('hidden');
+    document.getElementById('btn-prev-step').classList.add('hidden');
+  },
+
+  // Verify if a friend clicked the shared link
+  verifyShareRevive() {
+    const btnVerify = document.getElementById('btn-verify-share');
+    const btnText = document.getElementById('btn-verify-text');
+    const verifyStatusEl = document.getElementById('verify-status');
+    const verifyIconEl = document.getElementById('verify-icon');
+    const verifyResultEl = document.getElementById('verify-result');
+    const btnReviveSuccess = document.getElementById('btn-revive-success');
+
+    // Prevent double-click
+    if (this._verifyChecked) return;
+
+    // Start checking animation
+    btnVerify.disabled = true;
+    btnVerify.classList.add('checking');
+    btnText.innerHTML = '<span class="verify-spinner"></span> 正在核验...';
+    verifyStatusEl.classList.add('checking');
+    verifyStatusEl.querySelector('.verify-status-text').textContent = '正在检查好友是否已进入游戏...';
+    verifyIconEl.textContent = '🔄';
+
+    // Simulate server verification with polling
+    let checkCount = 0;
+    const maxChecks = 5;
+    const self = this;
+
+    const doCheck = function() {
+      checkCount++;
+      const pendingRevives = Storage.get('pendingRevives', []);
+      const myId = Storage.getPlayerId();
+      const foundRevive = pendingRevives.find(function(r) { return r.to === myId; });
+
+      if (foundRevive) {
+        // SUCCESS! Friend clicked the link
+        self._verifyChecked = true;
+        btnVerify.classList.remove('checking');
+        btnVerify.classList.add('verified');
+        btnVerify.disabled = true;
+        btnText.textContent = '✅ 核验通过！';
+        verifyStatusEl.classList.remove('checking');
+        verifyStatusEl.querySelector('.verify-status-text').textContent = '🎉 检测到好友已通过你的链接进入游戏！';
+        verifyIconEl.textContent = '✅';
+        verifyResultEl.classList.remove('hidden', 'fail');
+        verifyResultEl.classList.add('success');
+        verifyResultEl.querySelector('.verify-result-icon').textContent = '🎊';
+        verifyResultEl.querySelector('.verify-result-text').textContent = '核验成功！好友已确认，现在可以复活了！';
+        btnReviveSuccess.classList.remove('hidden');
+
+        // Mark step 2 as done
+        document.querySelector('.verify-step[data-step="2"]').classList.add('done');
+        document.querySelector('.verify-step[data-step="2"]').classList.remove('active');
+
+        // Remove the used pending revive
+        const remaining = pendingRevives.filter(function(r) { return r.to !== myId; });
+        Storage.set('pendingRevives', remaining);
+
+        Sound.powerup();
+      } else if (checkCount < maxChecks) {
+        // Retry with delay (simulating server polling)
+        verifyStatusEl.querySelector('.verify-status-text').textContent =
+          '正在核验中... (' + checkCount + '/' + maxChecks + ')';
+        self._verificationPollTimer = setTimeout(doCheck, 800);
+      } else {
+        // All checks failed
+        btnVerify.disabled = false;
+        btnVerify.classList.remove('checking');
+        btnText.textContent = '🔄 重新核验';
+        verifyStatusEl.classList.remove('checking');
+        verifyStatusEl.querySelector('.verify-status-text').textContent =
+          '⚠️ 暂未检测到好友进入，请确认好友已点击链接';
+        verifyIconEl.textContent = '⚠️';
+        verifyResultEl.classList.remove('hidden', 'success');
+        verifyResultEl.classList.add('fail');
+        verifyResultEl.querySelector('.verify-result-icon').textContent = '⏳';
+        verifyResultEl.querySelector('.verify-result-text').textContent =
+          '未检测到好友点击。请让好友通过链接进入游戏后再试，或重新分享链接。';
+        btnReviveSuccess.classList.add('hidden');
+
+        // Allow retry
+        self._verifyChecked = false;
+
+        // Offer to go back to share step
+        setTimeout(function() {
+          if (!self._verifyChecked) {
+            verifyStatusEl.querySelector('.verify-status-text').textContent =
+              '💡 提示：可以返回上一步重新分享链接';
+          }
+        }, 1500);
+      }
+    };
+
+    // Start first check after short delay
+    setTimeout(doCheck, 600);
+  },
+
+  // Confirm revive from share verification
+  confirmReviveFromShare() {
+    // Clear polling timer if active
+    if (this._verificationPollTimer) {
+      clearTimeout(this._verificationPollTimer);
+      this._verificationPollTimer = null;
+    }
+
+    // Award bonus rewards for share revive
+    this.coins += 50;
+    this.gems += 5;
+    Storage.set('coins', this.coins);
+    Storage.set('gems', this.gems);
+    this.showToast('🎉 好友助力复活成功！获得 +50金币 +5钻石 奖励！');
+
+    // Reset modal state
+    this.resetFriendModal();
+
+    // Revive the player
+    this.revive();
+
+    // Extended 3-second invincibility shield for share revive
+    this.player.iframeTimer = 3000; // 3 seconds in ms
+  },
+
+  // Reset friend modal state
+  resetFriendModal() {
+    if (this._verificationPollTimer) {
+      clearTimeout(this._verificationPollTimer);
+      this._verificationPollTimer = null;
+    }
+    this._shareCompleted = false;
+    this._shareMethod = null;
+    this._verifyChecked = false;
   },
 
   // --- Pause Menu ---
   renderPauseContent() {
-    document.getElementById('pause-coins').textContent = this.coinsEarned;
+    document.getElementById('pause-stars').textContent = this.starsEarned;
+    document.getElementById('pause-coins').textContent = this.coins;
     document.getElementById('pause-gems').textContent = this.gems;
 
     document.querySelectorAll('.pause-tab').forEach(tab => {
@@ -1620,65 +2317,54 @@ const game = {
   },
 
   _renderWeaponsTab() {
-    const owned = this.ownedWeaponsThisRun;
     const equipped = this.player.weaponType;
-    const coins = this.coinsEarned;
+    const starsLocal = this.starsEarned;
     const gems = this.gems;
-    const waveCompleted = this.wave > 1 || this.enemiesRemaining <= 0;
-    const autoFireUnlocked = waveCompleted;
     let html = '';
 
-    // Auto-fire module card
-    if (this.autoFire) {
+    // Auto-fire module card (persistent)
+    if (this.autoFireOwned) {
       html += `<div class="weapon-card equipped" data-autofire="owned">
         <span class="weapon-icon">🤖</span>
         <div class="weapon-info">
-          <div class="weapon-name">自动射击模块</div>
-          <div class="weapon-desc">武器自动向鼠标方向射击，解放双手</div>
+          <div class="weapon-name">自动射击模块 <span class="perm-badge">永久</span></div>
+          <div class="weapon-desc">武器自动向鼠标方向射击</div>
           <div class="weapon-stats"><span>持续射击</span></div>
         </div>
         <div class="weapon-status">✅ 已激活</div>
       </div>`;
-    } else if (autoFireUnlocked) {
-      const canBuyCoins = coins >= 100;
-      const canBuyGems = gems >= 6;
+    } else {
+      const canBuyCoins = this.coins >= 400;
+      const canBuyGems = gems >= 15;
       html += `<div class="weapon-card" data-autofire="buy">
         <span class="weapon-icon">🤖</span>
         <div class="weapon-info">
-          <div class="weapon-name">自动射击模块</div>
-          <div class="weapon-desc">武器自动向鼠标方向射击，解放双手</div>
-          <div class="weapon-stats"><span>持续射击</span></div>
+          <div class="weapon-name">自动射击模块 <span class="perm-badge">永久</span></div>
+          <div class="weapon-desc">武器自动向鼠标方向射击，一次性购买永久使用</div>
+          <div class="weapon-stats"><span>持续射击 · 跨局保留</span></div>
         </div>
         <div class="btn-dual-group">
           <button class="btn-buy-sm btn-buy-coin" data-action="buy-autofire-coin"
-            ${!canBuyCoins ? 'disabled' : ''}>🪙 100</button>
+            ${!canBuyCoins ? 'disabled' : ''}>🪙 400</button>
           <button class="btn-buy-sm btn-buy-gem" data-action="buy-autofire-gem"
-            ${!canBuyGems ? 'disabled' : ''}>💎 6</button>
+            ${!canBuyGems ? 'disabled' : ''}>💎 15</button>
         </div>
-      </div>`;
-    } else {
-      html += `<div class="weapon-card" style="opacity:0.5">
-        <span class="weapon-icon">🔒</span>
-        <div class="weapon-info">
-          <div class="weapon-name">自动射击模块</div>
-          <div class="weapon-desc">武器自动向鼠标方向射击，解放双手</div>
-          <div class="weapon-stats"><span>完成第1波后解锁</span></div>
-        </div>
-        <div class="weapon-status">🔒 锁定</div>
       </div>`;
     }
 
     Object.values(WEAPONS).forEach(w => {
-      const isOwned = owned.has(w.id);
+      const ownedData = this.ownedWeapons[w.id];
+      const isOwned = ownedData?.owned;
       const isEquipped = equipped === w.id;
-      const canBuyCoins = !isOwned && coins >= w.cost && w.cost > 0;
-      const canBuyGems = !isOwned && gems >= w.gemCost && w.gemCost > 0;
+      const wLevel = ownedData?.level || 1;
+      const canBuyStars = !isOwned && starsLocal >= w.unlockCost && w.unlockCost > 0;
+      const canBuyGems = !isOwned && gems >= w.unlockGemCost && w.unlockGemCost > 0;
 
       html += `<div class="weapon-card ${isEquipped ? 'equipped' : ''}" data-weapon="${w.id}">
         <span class="weapon-icon">${w.icon}</span>
         <div class="weapon-info">
-          <div class="weapon-name">${w.name}</div>
-          <div class="weapon-desc">${w.desc}</div>
+          <div class="weapon-name">${w.name} ${isOwned ? '<span class="lvl-badge">Lv.' + wLevel + '</span>' : ''}</div>
+          <div class="weapon-desc">${w.desc} ${isOwned ? '<br/><small>永久拥有 · 跨局保留</small>' : ''}</div>
           <div class="weapon-stats">
             ${w.stats.split('|').map(s => '<span>' + s.trim() + '</span>').join('')}
           </div>
@@ -1690,10 +2376,10 @@ const game = {
         html += `<button class="btn-buy-sm btn-buy-coin" data-action="equip" data-weapon="${w.id}">🔄 装备</button>`;
       } else {
         html += `<div class="btn-dual-group">
-          <button class="btn-buy-sm btn-buy-coin" data-action="buy-coin" data-weapon="${w.id}"
-            ${!canBuyCoins ? 'disabled' : ''}>🪙 ${w.cost}</button>
+          <button class="btn-buy-sm btn-buy-coin" data-action="buy-star" data-weapon="${w.id}"
+            ${!canBuyStars ? 'disabled' : ''}>⭐ ${w.unlockCost}</button>
           <button class="btn-buy-sm btn-buy-gem" data-action="buy-gem" data-weapon="${w.id}"
-            ${!canBuyGems ? 'disabled' : ''}>💎 ${w.gemCost}</button>
+            ${!canBuyGems ? 'disabled' : ''}>💎 ${w.unlockGemCost}</button>
         </div>`;
       }
       html += '</div>';
@@ -1720,8 +2406,8 @@ const game = {
         const action = btn.dataset.action;
         if (action === 'equip') {
           this.equipWeapon(weaponId);
-        } else if (action === 'buy-coin') {
-          this.buyWeapon(weaponId, 'coins');
+        } else if (action === 'buy-star') {
+          this.buyWeapon(weaponId, 'stars');
         } else if (action === 'buy-gem') {
           this.buyWeapon(weaponId, 'gems');
         }
@@ -1730,11 +2416,11 @@ const game = {
   },
 
   _renderItemsTab() {
-    const coins = this.coinsEarned;
+    const starsLocal = this.starsEarned;
     let html = '';
 
     IN_RUN_POWERUPS.forEach(pu => {
-      const canBuy = coins >= pu.cost;
+      const canBuy = starsLocal >= pu.cost;
       html += `<div class="powerup-card" data-powerup="${pu.id}">
         <span class="powerup-icon">${pu.icon}</span>
         <div class="powerup-info">
@@ -1742,7 +2428,7 @@ const game = {
           <div class="powerup-desc">${pu.desc}</div>
         </div>
         <button class="btn-buy-sm btn-buy-coin" data-action="buy-powerup" data-powerup="${pu.id}"
-          ${!canBuy ? 'disabled' : ''}>🪙 ${pu.cost}</button>
+          ${!canBuy ? 'disabled' : ''}>⭐ ${pu.cost}</button>
       </div>`;
     });
 
@@ -1760,8 +2446,9 @@ const game = {
   },
 
   _renderUpgradesTab() {
-    const coins = this.totalCoins;
+    const coinsLocal = this.coins;
 
+    // Character upgrades
     const shopItems = [
       { id: 'maxHp',   name: '最大生命值 +10', desc: '提升生存能力',    icon: '❤️',  cost: 100, level: this.upgrades.maxHp,    maxLevel: 20 },
       { id: 'speed',   name: '移动速度 +6%',   desc: '更灵活地走位',    icon: '👟',  cost: 150, level: this.upgrades.speed,    maxLevel: 15 },
@@ -1770,10 +2457,10 @@ const game = {
       { id: 'coinGain',name: '金币加成 +10%',   desc: '获得更多金币',    icon: '🪙',  cost: 100, level: this.upgrades.coinGain, maxLevel: 20 },
     ];
 
-    let html = '';
+    let html = '<h4 style="margin-bottom:8px;color:var(--accent)">🧑 角色属性</h4>';
     shopItems.forEach(item => {
       const cost = Math.floor(item.cost + item.level * item.cost * 0.5);
-      const canBuy = coins >= cost;
+      const canBuy = coinsLocal >= cost;
       const atMax = item.level >= item.maxLevel;
       html += `<div class="shop-item">
         <span style="font-size:1.5rem">${item.icon}</span>
@@ -1788,44 +2475,161 @@ const game = {
         </button>
       </div>`;
     });
+
+    // Weapon upgrades section
+    const equippedWeaponId = this.player.weaponType;
+    const weapon = WEAPONS[equippedWeaponId];
+    if (weapon && this.ownedWeapons[equippedWeaponId]?.owned) {
+      const wUps = this.weaponUpgrades[equippedWeaponId] || {};
+      html += `<h4 style="margin:12px 0 8px;color:var(--gold)">🔫 ${weapon.name} 升级</h4>`;
+      weapon.upgradePaths.forEach(path => {
+        const currentLvl = wUps[path.id] || 0;
+        const atMax = currentLvl >= path.maxLevel;
+        const cost = 120 + currentLvl * 60;
+        const canBuy = this.starsEarned >= cost;
+        html += `<div class="shop-item">
+          <span style="font-size:1.3rem">${path.icon}</span>
+          <div class="info">
+            <div class="name">${path.name} Lv.${currentLvl}/${path.maxLevel}</div>
+            <div class="desc">${path.desc}</div>
+          </div>
+          <button class="btn-buy-coin" data-wpn-upgrade="${equippedWeaponId}" data-stat="${path.id}" data-cost="${cost}"
+            ${(!canBuy || atMax) ? 'disabled' : ''}>
+            ${atMax ? '已满级' : '⭐ ' + cost}
+          </button>
+        </div>`;
+      });
+    }
+
     return html;
   },
 
   _bindUpgradeEvents() {
-    document.querySelectorAll('#pause-tab-content button[data-shop]').forEach(btn => {
+    const container = document.getElementById('pause-tab-content');
+    // Character upgrade buttons
+    container.querySelectorAll('button[data-shop]').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.shop;
         const cost = parseInt(btn.dataset.cost);
         this.buyUpgrade(id, cost, true);
       });
     });
+    // Weapon upgrade buttons
+    container.querySelectorAll('button[data-wpn-upgrade]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const weaponId = btn.dataset.wpnUpgrade;
+        const statId = btn.dataset.stat;
+        this.buyWeaponUpgrade(weaponId, statId);
+      });
+    });
   },
 
+  // --- Persistent Weapon System ---
+
+  // Compute effective weapon stats from upgrades
+  getEffectiveWeaponStats(weaponId) {
+    const base = WEAPONS[weaponId];
+    if (!base) return { damageMult: 1, fireRateMult: 1, spread: 0, pellets: 1, bulletSize: 3 };
+    const ups = this.weaponUpgrades[weaponId] || {};
+    const paths = base.upgradePaths || [];
+
+    // Find the special upgrade key for this weapon
+    const specialKey = paths.length > 2 ? paths[2].id : null;
+
+    const dmgBonus = 1 + (ups.damageLvl || 0) * (paths[0]?.perLevel || 0.08);
+    const frBonus = 1 + (ups.fireRateLvl || 0) * (paths[1]?.perLevel || 0.06);
+    let spread = base.spread || 0;
+    let pellets = base.pellets || 1;
+    let bulletSize = base.bulletSize || 3;
+
+    if (specialKey === 'ammoLvl') {
+      pellets = base.pellets + (ups.ammoLvl || 0);
+    } else if (specialKey === 'spreadLvl') {
+      spread = base.spread * Math.max(0.05, 1 - (ups.spreadLvl || 0) * 0.06);
+    } else if (specialKey === 'accuracyLvl') {
+      spread = base.spread * Math.max(0.05, 1 - (ups.accuracyLvl || 0) * 0.08);
+    } else if (specialKey === 'pierceLvl') {
+      bulletSize = base.bulletSize * (1 + (ups.pierceLvl || 0) * 0.15);
+    }
+
+    // Compute weapon level from sum of sub-stats
+    const totalLvl = (ups.damageLvl || 0) + (ups.fireRateLvl || 0) + (ups[specialKey] || 0);
+    const level = Math.min(20, Math.floor(totalLvl / 3) + 1);
+
+    return { damageMult: base.damageMult * dmgBonus, fireRateMult: base.fireRateMult * frBonus, spread, pellets, bulletSize, level };
+  },
+
+  // Buy weapon PERSISTENTLY (unlock with stars)
   buyWeapon(weaponId, currency) {
     const weapon = WEAPONS[weaponId];
-    if (!weapon || weapon.cost === 0) return;
-    if (this.ownedWeaponsThisRun.has(weaponId)) return;
+    if (!weapon || weapon.unlockCost === 0) return;
+    if (this.ownedWeapons[weaponId]?.owned) return;
 
-    if (currency === 'coins') {
-      if (this.coinsEarned < weapon.cost) return;
-      this.coinsEarned -= weapon.cost;
+    const cost = currency === 'stars' ? weapon.unlockCost : weapon.unlockGemCost;
+    if (currency === 'stars') {
+      if (this.starsEarned < cost) { this.showToast('⭐ 星星不足！还需要 ' + (cost - this.starsEarned) + ' ⭐'); return; }
+      this.starsEarned -= cost;
     } else {
-      if (this.gems < weapon.gemCost) return;
-      this.gems -= weapon.gemCost;
+      if (this.gems < cost) { this.showToast('💎 钻石不足！'); return; }
+      this.gems -= cost;
       Storage.set('gems', this.gems);
     }
 
-    this.ownedWeaponsThisRun.add(weaponId);
+    this.ownedWeapons[weaponId] = { owned: true, level: 1 };
+    Storage.set('ownedWeapons', this.ownedWeapons);
+    this.equippedWeapon = weaponId;
+    Storage.set('equippedWeapon', weaponId);
     this.player.weaponType = weaponId;
     Sound.powerup();
-    this.showToast('✅ 装备了 ' + weapon.name + '！');
+    this.showToast('🔓 永久解锁 ' + weapon.name + '！');
     this.updateHUD();
     this.renderPauseContent();
   },
 
+  // Buy weapon sub-stat upgrade
+  buyWeaponUpgrade(weaponId, statId) {
+    const weapon = WEAPONS[weaponId];
+    if (!weapon) return;
+    const ups = this.weaponUpgrades[weaponId];
+    if (!ups) return;
+
+    const currentLvl = ups[statId] || 0;
+    const maxLvl = 10;
+    if (currentLvl >= maxLvl) { this.showToast('已达到最大等级！'); return; }
+
+    const cost = 120 + currentLvl * 60;
+    if (this.starsEarned < cost) { this.showToast('⭐ 星星不足！需要 ' + cost + ' ⭐'); return; }
+
+    this.starsEarned -= cost;
+    ups[statId] = currentLvl + 1;
+    Storage.set('weaponUpgrades', this.weaponUpgrades);
+
+    // Update weapon level in ownedWeapons
+    const totalLvl = (ups.damageLvl || 0) + (ups.fireRateLvl || 0) + (ups[this._getSpecialKey(weaponId)] || 0);
+    const level = Math.min(20, Math.floor(totalLvl / 3) + 1);
+    if (this.ownedWeapons[weaponId]) {
+      this.ownedWeapons[weaponId].level = level;
+      Storage.set('ownedWeapons', this.ownedWeapons);
+    }
+
+    Sound.powerup();
+    this.showToast('⬆️ ' + weapon.name + ' 升级！Lv.' + level);
+    this.renderPauseContent();
+  },
+
+  _getSpecialKey(weaponId) {
+    const paths = WEAPONS[weaponId]?.upgradePaths || [];
+    return paths.length > 2 ? paths[2].id : null;
+  },
+
   equipWeapon(weaponId) {
-    if (!this.ownedWeaponsThisRun.has(weaponId)) return;
+    if (!this.ownedWeapons[weaponId]?.owned) {
+      this.showToast('🔒 未解锁的武器！先解锁吧');
+      return;
+    }
     this.player.weaponType = weaponId;
+    this.equippedWeapon = weaponId;
+    Storage.set('equippedWeapon', weaponId);
     Sound.powerup();
     this.showToast('✅ 切换到 ' + WEAPONS[weaponId].name);
     this.updateHUD();
@@ -1833,18 +2637,23 @@ const game = {
   },
 
   buyAutoFire(currency) {
-    if (this.autoFire) return;
+    if (this.autoFireOwned) return;
+    const coinCost = 400;
+    const gemCost = 15;
     if (currency === 'coins') {
-      if (this.coinsEarned < 100) return;
-      this.coinsEarned -= 100;
+      if (this.coins < coinCost) { this.showToast('🪙 金币不足！需要 ' + coinCost); return; }
+      this.coins -= coinCost;
+      Storage.set('coins', this.coins);
     } else {
-      if (this.gems < 6) return;
-      this.gems -= 6;
+      if (this.gems < gemCost) { this.showToast('💎 钻石不足！需要 ' + gemCost); return; }
+      this.gems -= gemCost;
       Storage.set('gems', this.gems);
     }
+    this.autoFireOwned = true;
     this.autoFire = true;
+    Storage.set('autoFireOwned', true);
     Sound.powerup();
-    this.showToast('🤖 自动射击已激活！');
+    this.showToast('🤖 自动射击模块永久解锁！');
     this.updateHUD();
     this.renderPauseContent();
   },
@@ -1852,9 +2661,9 @@ const game = {
   buyInRunPowerUp(powerupId) {
     const pu = IN_RUN_POWERUPS.find(p => p.id === powerupId);
     if (!pu) return;
-    if (this.coinsEarned < pu.cost) return;
+    if (this.coins < pu.cost) return;
 
-    this.coinsEarned -= pu.cost;
+    this.coins -= pu.cost;
     pu.apply(this.player);
     Sound.powerup();
     spawnParticles(this.player.x, this.player.y, 10, '#ffd700', 4, 0.4);
@@ -1864,167 +2673,222 @@ const game = {
   },
 
   showShop() {
-    const coins = this.totalCoins;
+    const coinsLocal = this.coins;
     const gems = this.gems;
-    document.getElementById('shop-coins').textContent = coins;
+    document.getElementById('shop-coins').textContent = coinsLocal;
     document.getElementById('shop-gems').textContent = gems;
 
-    // Upgrade items
-    const shopItems = [
-      { id: 'maxHp', name: '最大生命值 +10', desc: '提升生存能力', icon: '❤️', cost: 100, currency: 'coins', level: this.upgrades.maxHp, maxLevel: 20 },
-      { id: 'speed', name: '移动速度 +6%', desc: '更灵活地走位', icon: '👟', cost: 150, currency: 'coins', level: this.upgrades.speed, maxLevel: 15 },
-      { id: 'damage', name: '攻击力 +10%', desc: '更快消灭敌人', icon: '⚔️', cost: 150, currency: 'coins', level: this.upgrades.damage, maxLevel: 20 },
-      { id: 'fireRate', name: '射速 +8%', desc: '更高频率射击', icon: '🎯', cost: 200, currency: 'coins', level: this.upgrades.fireRate, maxLevel: 15 },
-      { id: 'coinGain', name: '金币加成 +10%', desc: '获得更多金币', icon: '🪙', cost: 100, currency: 'coins', level: this.upgrades.coinGain, maxLevel: 20 },
+    // ====== Section 1: IAP - Diamond Top-up ======
+    const iapItems = [
+      { id:'pack6',  name:'小袋钻石',   desc:'60钻石',             icon:'💎', price:6,   gems:60,   bonus:'' },
+      { id:'pack30', name:'中袋钻石',   desc:'300钻石 + 赠30',      icon:'💎', price:30,  gems:330,  bonus:'+30' },
+      { id:'pack68', name:'大袋钻石',   desc:'680钻石 + 赠100',     icon:'💎', price:68,  gems:780,  bonus:'+100' },
+      { id:'pack128',name:'超值钻石',   desc:'1280钻石 + 赠300',    icon:'👑', price:128, gems:1580, bonus:'+300' },
     ];
+    document.getElementById('shop-iap').innerHTML =
+      '<h3>💎 钻石充值 <span style="font-size:0.7rem;color:var(--text-dim)">1 = 10</span></h3>' +
+      iapItems.map(p => {
+        const rate = (p.price / p.gems).toFixed(3);
+        return '<div class="shop-item">' +
+          '<span style="font-size:1.5rem">' + p.icon + '</span>' +
+          '<div class="info">' +
+            '<div class="name">' + p.name + (p.bonus ? ' <span style="color:var(--accent);font-size:0.7rem">' + p.bonus + '</span>' : '') + '</div>' +
+            '<div class="desc">' + p.desc + ' · ' + rate + '/钻</div>' +
+          '</div>' +
+          '<button class="btn-buy-gem" id="btn-iap-' + p.id + '">' + p.price + '</button>' +
+        '</div>';
+      }).join('');
 
-    let html = '';
-    shopItems.forEach(item => {
-      const cost = item.cost + item.level * item.cost * 0.5;
-      const canBuy = item.currency === 'coins' ? coins >= cost : gems >= cost;
-      const atMax = item.level >= item.maxLevel;
-      html += `<div class="shop-item">
-        <span style="font-size:1.5rem">${item.icon}</span>
-        <div class="info">
-          <div class="name">${item.name}</div>
-          <div class="desc">${item.desc}</div>
-          <div class="level">等级 ${item.level}/${item.maxLevel}</div>
-        </div>
-        <button class="btn-buy-coin" data-shop="${item.id}" data-cost="${Math.floor(cost)}"
-          ${(!canBuy || atMax) ? 'disabled' : ''}>
-          ${atMax ? '已满级' : '🪙 ' + Math.floor(cost)}
-        </button>
-      </div>`;
-    });
-
-    document.getElementById('shop-items').innerHTML = html;
-
-    // Premium items
-    document.getElementById('premium-items').innerHTML = `
-      <div class="shop-item">
-        <span style="font-size:1.5rem">🎫</span>
-        <div class="info">
-          <div class="name">复活令牌</div>
-          <div class="desc">阵亡后可用于复活</div>
-        </div>
-        <button class="btn-buy-gem" id="btn-buy-token">
-          💎 10
-        </button>
-      </div>
-      <div class="shop-item">
-        <span style="font-size:1.5rem">💎</span>
-        <div class="info">
-          <div class="name">钻石礼包</div>
-          <div class="desc">50 钻石 + 2 复活令牌</div>
-        </div>
-        <button class="btn-buy-gem" id="btn-buy-gempack">
-          💰 ¥6.00
-        </button>
-      </div>
-    `;
-
-    // Bind events
-    document.querySelectorAll('#shop-items button[data-shop]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.shop;
-        const cost = parseInt(btn.dataset.cost);
-        this.buyUpgrade(id, cost);
+    iapItems.forEach(p => {
+      document.getElementById('btn-iap-' + p.id).addEventListener('click', () => {
+        if (confirm('模拟购买：' + p.name + ' ' + p.price + '\n\n实际部署接入支付SDK\n点击确定模拟购买成功')) {
+          this.gems += p.gems;
+          Storage.set('gems', this.gems);
+          Sound.powerup();
+          this.showToast('支付成功！获得 ' + p.gems + ' 钻石');
+          this.showShop();
+        }
       });
     });
 
+    // ====== Section 2: Coin Exchange ======
+    const coinExchange = [
+      { coins:100,  cost:5,  rate:'20/钻' },
+      { coins:300,  cost:12, rate:'25/钻' },
+      { coins:800,  cost:28, rate:'28.6/钻' },
+      { coins:2000, cost:60, rate:'33.3/钻' },
+    ];
+    document.getElementById('shop-coin-exchange').innerHTML =
+      '<h3>🪙 金币兑换 <span style="font-size:0.7rem;color:var(--text-dim)">钻石换金币</span></h3>' +
+      coinExchange.map((item, idx) =>
+        '<div class="shop-item">' +
+          '<span style="font-size:1.5rem">🪙</span>' +
+          '<div class="info">' +
+            '<div class="name">' + item.coins + ' 金币</div>' +
+            '<div class="desc">汇率: ' + item.rate + '</div>' +
+          '</div>' +
+          '<button class="btn-buy-gem" id="btn-buy-coin-' + idx + '">' + item.cost + '</button>' +
+        '</div>'
+      ).join('');
+
+    coinExchange.forEach((item, idx) => {
+      document.getElementById('btn-buy-coin-' + idx).addEventListener('click', () => {
+        if (this.gems >= item.cost) {
+          this.gems -= item.cost;
+          this.coins += item.coins;
+          Storage.set('gems', this.gems);
+          Storage.set('coins', this.coins);
+          Sound.powerup();
+          this.showToast('获得 ' + item.coins + ' 金币！');
+          this.showShop();
+        } else { this.showToast('钻石不足！'); }
+      });
+    });
+
+    // ====== Section 3: Character Upgrades ======
+    const shopItems = [
+      { id:'maxHp',   name:'最大生命值 +10', desc:'提升生存能力',   icon:'❤️', cost:100, level:this.upgrades.maxHp,   maxLevel:20 },
+      { id:'speed',   name:'移动速度 +6%',   desc:'更灵活地走位',   icon:'👟', cost:150, level:this.upgrades.speed,   maxLevel:15 },
+      { id:'damage',  name:'攻击力 +10%',    desc:'更快消灭敌人',   icon:'⚔️', cost:150, level:this.upgrades.damage,  maxLevel:20 },
+      { id:'fireRate',name:'射速 +8%',       desc:'更高频率射击',   icon:'🎯', cost:200, level:this.upgrades.fireRate,maxLevel:15 },
+      { id:'coinGain',name:'金币加成 +10%',   desc:'获得更多金币',   icon:'🪙', cost:100, level:this.upgrades.coinGain,maxLevel:20 },
+    ];
+    document.getElementById('shop-upgrades').innerHTML =
+      '<h3>⬆️ 角色升级 <span style="font-size:0.7rem;color:var(--text-dim)">消耗金币</span></h3>' +
+      shopItems.map(item => {
+        const cost = Math.floor(item.cost + item.level * item.cost * 0.5);
+        const canBuy = coinsLocal >= cost;
+        const atMax = item.level >= item.maxLevel;
+        return '<div class="shop-item">' +
+          '<span style="font-size:1.5rem">' + item.icon + '</span>' +
+          '<div class="info">' +
+            '<div class="name">' + item.name + '</div>' +
+            '<div class="desc">' + item.desc + '</div>' +
+            '<div class="level">等级 ' + item.level + '/' + item.maxLevel + '</div>' +
+          '</div>' +
+          '<button class="btn-buy-coin" data-shop="' + item.id + '" data-cost="' + cost + '"' +
+            ((!canBuy || atMax) ? ' disabled' : '') + '>' +
+            (atMax ? '已满级' : cost + '') +
+          '</button>' +
+        '</div>';
+      }).join('');
+
+    // ====== Section 4: Star Exchange ======
+    const starExchange = [
+      { stars:50,  cost:3,  rate:'16.7/钻' },
+      { stars:150, cost:8,  rate:'18.8/钻' },
+      { stars:400, cost:18, rate:'22.2/钻' },
+      { stars:900, cost:35, rate:'25.7/钻' },
+    ];
+    document.getElementById('shop-star-exchange').innerHTML =
+      '<h3>⭐ 星星兑换 <span style="font-size:0.7rem;color:var(--text-dim)">钻石换星星 · 开局发放</span></h3>' +
+      starExchange.map((item, idx) =>
+        '<div class="shop-item">' +
+          '<span style="font-size:1.5rem">⭐</span>' +
+          '<div class="info">' +
+            '<div class="name">' + item.stars + ' 星星</div>' +
+            '<div class="desc">汇率: ' + item.rate + ' · 下局自动发放</div>' +
+          '</div>' +
+          '<button class="btn-buy-gem" id="btn-buy-star-' + idx + '">' + item.cost + '</button>' +
+        '</div>'
+      ).join('');
+
+    starExchange.forEach((item, idx) => {
+      document.getElementById('btn-buy-star-' + idx).addEventListener('click', () => {
+        if (this.gems >= item.cost) {
+          this.gems -= item.cost;
+          this._pendingStarBonus = (this._pendingStarBonus || 0) + item.stars;
+          Storage.set('gems', this.gems);
+          Storage.set('pendingStarBonus', this._pendingStarBonus);
+          Sound.powerup();
+          this.showToast('获得 ' + item.stars + ' 星星！下局自动发放');
+          this.showShop();
+        } else { this.showToast('钻石不足！'); }
+      });
+    });
+
+    // ====== Section 5: Weapon Status ======
+    document.getElementById('shop-weapons').innerHTML =
+      '<h3>🔫 武器状态 <span style="font-size:0.7rem;color:var(--text-dim)">局内用⭐解锁</span></h3>' +
+      Object.values(WEAPONS).map(w => {
+        const owned = this.ownedWeapons[w.id]?.owned;
+        const wLvl = this.ownedWeapons[w.id]?.level || 1;
+        if (owned) {
+          return '<div class="shop-item" style="border:1px solid rgba(22,199,154,0.3)">' +
+            '<span style="font-size:1.5rem">' + w.icon + '</span>' +
+            '<div class="info">' +
+              '<div class="name">' + w.name + ' <span class="lvl-badge">Lv.' + wLvl + '</span></div>' +
+              '<div class="desc">已解锁 · 局内升级</div>' +
+            '</div>' +
+            '<button class="btn-buy-coin" data-equip-shop="' + w.id + '">装备</button>' +
+          '</div>';
+        } else {
+          let valMsg = '';
+          if (w.unlockCost <= 200) valMsg = ' (约2-3局)';
+          else if (w.unlockCost <= 350) valMsg = ' (约3-4局)';
+          else valMsg = ' (约5-6局)';
+          return '<div class="shop-item" style="opacity:0.7">' +
+            '<span style="font-size:1.5rem">' + w.icon + '</span>' +
+            '<div class="info">' +
+              '<div class="name">' + w.name + '</div>' +
+              '<div class="desc">局内用 ' + w.unlockCost + ' 星星解锁' + valMsg + '</div>' +
+            '</div>' +
+          '</div>';
+        }
+      }).join('');
+
+    // ====== Section 6: Premium Items ======
+    document.getElementById('shop-premium').innerHTML =
+      '<h3>🎫 道具商店 <span style="font-size:0.7rem;color:var(--text-dim)">消耗钻石</span></h3>' +
+      '<div class="shop-item">' +
+        '<span style="font-size:1.5rem">🎫</span>' +
+        '<div class="info">' +
+          '<div class="name">复活令牌</div>' +
+          '<div class="desc">阵亡后可用于复活</div>' +
+        '</div>' +
+        '<button class="btn-buy-gem" id="btn-buy-token">10</button>' +
+      '</div>';
+
+    // --- Event Bindings ---
+    // Upgrade buttons
+    document.querySelectorAll('#shop-upgrades button[data-shop]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.buyUpgrade(btn.dataset.shop, parseInt(btn.dataset.cost));
+      });
+    });
+    // Weapon equip buttons
+    document.querySelectorAll('#shop-weapons button[data-equip-shop]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.equipWeapon(btn.dataset.equipShop);
+        this.showShop();
+      });
+    });
+    // Revive token
     document.getElementById('btn-buy-token').addEventListener('click', () => {
       if (this.gems >= 10) {
         this.gems -= 10;
         this.reviveTokens += 1;
         Storage.set('gems', this.gems);
         Storage.set('reviveTokens', this.reviveTokens);
-        this.showToast('🎫 获得 1 个复活令牌！');
+        this.showToast('获得 1 个复活令牌！');
         this.showShop();
-      } else {
-        this.showToast('💎 钻石不足！');
-      }
-    });
-
-    document.getElementById('btn-buy-gempack').addEventListener('click', () => {
-      // Simulate purchase
-      if (confirm('模拟购买：钻石礼包 ¥6.00\n\n（在实际部署中，这里将接入支付SDK）\n\n点击确定模拟购买成功')) {
-        this.gems += 50;
-        this.reviveTokens += 2;
-        Storage.set('gems', this.gems);
-        Storage.set('reviveTokens', this.reviveTokens);
-        this.showToast('✅ 购买成功！获得 50 钻石 + 2 复活令牌');
-        this.showShop();
-      }
-    });
-
-    // Coin shop items
-    const coinShopItems = [
-      { coins: 100, cost: 5, icon: '🪙', label: '100 金币' },
-      { coins: 300, cost: 12, icon: '💰', label: '300 金币' },
-      { coins: 800, cost: 28, icon: '💎', label: '800 金币' },
-      { coins: 2000, cost: 60, icon: '👑', label: '2000 金币' },
-    ];
-
-    document.getElementById('coin-shop-items').innerHTML = coinShopItems.map((item, idx) => `
-      <div class="shop-item">
-        <span style="font-size:1.5rem">${item.icon}</span>
-        <div class="info">
-          <div class="name">${item.label}</div>
-          <div class="desc">消耗 ${item.cost} 钻石</div>
-        </div>
-        <button class="btn-buy-gem" id="btn-buy-coins-${idx}">
-          💎 ${item.cost}
-        </button>
-      </div>
-    `).join('');
-
-    coinShopItems.forEach((item, idx) => {
-      document.getElementById('btn-buy-coins-' + idx).addEventListener('click', () => {
-        if (this.gems >= item.cost) {
-          this.gems -= item.cost;
-          this.totalCoins += item.coins;
-          Storage.set('gems', this.gems);
-          Storage.set('totalCoins', this.totalCoins);
-          Sound.powerup();
-          this.showToast(`✅ 获得 ${item.coins} 金币！`);
-          this.showShop();
-        } else {
-          this.showToast('💎 钻石不足！');
-        }
-      });
+      } else { this.showToast('钻石不足！'); }
     });
 
     this.showScreen('shop-screen');
-  },
-
-  buyUpgrade(id, cost, fromPause = false) {
-    if (this.totalCoins < cost) return;
-    this.totalCoins -= cost;
-    this.upgrades[id] = (this.upgrades[id] || 0) + 1;
-    Storage.set('totalCoins', this.totalCoins);
-    Storage.set('upgrades', this.upgrades);
-    this.applyUpgrades();
-    Sound.powerup();
-    this.showToast('✅ 升级成功！');
-    if (fromPause) {
-      this.updateMenuStats();
-      this.renderPauseContent();
-    } else {
-      this.showShop();
-    }
   },
 
   showDaily() {
     const today = new Date().toDateString();
     const claimed = this.lastDailyClaim === today;
     const rewards = [
-      { coins: 50, icon: '🪙' },
-      { coins: 100, icon: '🪙' },
-      { coins: 150, gems: 1, icon: '💎' },
-      { coins: 200, icon: '🪙' },
-      { coins: 250, gems: 2, icon: '💎' },
-      { coins: 300, icon: '🪙' },
-      { coins: 500, gems: 5, reviveToken: 1, icon: '🎁' },
+      { coinAmount: 50, icon: '🪙' },
+      { coinAmount: 100, icon: '🪙' },
+      { coinAmount: 150, gems: 1, icon: '💎' },
+      { coinAmount: 200, icon: '🪙' },
+      { coinAmount: 250, gems: 2, icon: '💎' },
+      { coinAmount: 300, icon: '🪙' },
+      { coinAmount: 500, gems: 5, reviveToken: 1, icon: '🎁' },
     ];
 
     let html = '';
@@ -2036,7 +2900,7 @@ const game = {
       if (claimed && i === this.dailyStreak) cls = 'claimed';
 
       let label = '';
-      if (r.coins) label += r.coins + '🪙';
+      if (r.coinAmount) label += r.coinAmount + '🪙';
       if (r.gems) label += ' +' + r.gems + '💎';
       if (r.reviveToken) label += ' +🎫';
 
@@ -2056,7 +2920,7 @@ const game = {
       const reward = this.claimDaily();
       if (reward) {
         let msg = '🎁 获得: ';
-        if (reward.coins) msg += reward.coins + ' 金币 ';
+        if (reward.coinAmount) msg += reward.coinAmount + ' 金币 ';
         if (reward.gems) msg += reward.gems + ' 钻石 ';
         if (reward.reviveToken) msg += '复活令牌x1 ';
         this.showToast(msg);
@@ -2124,8 +2988,179 @@ const game = {
 
   updateMenuStats() {
     document.getElementById('menu-high-score').textContent = this.highScore;
-    document.getElementById('menu-coins').textContent = this.totalCoins;
+    document.getElementById('menu-coins').textContent = this.coins;
     document.getElementById('menu-gems').textContent = this.gems;
+    // Update rank display
+    const rank = this.getRankTier();
+    const rankEl = document.getElementById('menu-rank');
+    if (rankEl) rankEl.innerHTML = `${rank.icon} ${rank.name}`;
+  },
+
+  // --- Rank & Achievement System ---
+
+  getRankTier() {
+    for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
+      if (this.highestWave >= RANK_TIERS[i].minWave) return RANK_TIERS[i];
+    }
+    return RANK_TIERS[0];
+  },
+
+  getNextRank() {
+    const current = this.getRankTier();
+    const idx = RANK_TIERS.indexOf(current);
+    return idx < RANK_TIERS.length - 1 ? RANK_TIERS[idx + 1] : null;
+  },
+
+  getRankProgress() {
+    const current = this.getRankTier();
+    const next = this.getNextRank();
+    if (!next) return 100;
+    const currentMin = current.minWave;
+    const nextMin = next.minWave;
+    return Math.min(100, Math.round((this.highestWave - currentMin) / (nextMin - currentMin) * 100));
+  },
+
+  checkAchievements() {
+    const newlyUnlocked = [];
+    ACHIEVEMENTS.forEach(a => {
+      if (!this.achievements.includes(a.id) && a.check(this)) {
+        this.achievements.push(a.id);
+        newlyUnlocked.push(a);
+      }
+    });
+    if (newlyUnlocked.length > 0) {
+      Storage.set('achievements', this.achievements);
+      newlyUnlocked.forEach(a => {
+        this.showToast(`🏆 成就解锁: ${a.icon} ${a.name}！`);
+      });
+    }
+  },
+
+  addScoreRecord() {
+    const record = {
+      score: this.score,
+      wave: this.wave,
+      kills: this.kills,
+      maxCombo: this.maxCombo,
+      date: new Date().toLocaleDateString('zh-CN'),
+      weaponsOwned: Object.values(this.ownedWeapons || {}).filter(w => w.owned).length,
+    };
+    this.scoreHistory.push(record);
+    // Keep top 20, sorted by score desc
+    this.scoreHistory.sort((a, b) => b.score - a.score);
+    if (this.scoreHistory.length > 20) this.scoreHistory = this.scoreHistory.slice(0, 20);
+    Storage.set('scoreHistory', this.scoreHistory);
+
+    // Track max combo ever
+    if (this.maxCombo > (this._maxComboEver || 0)) {
+      this._maxComboEver = this.maxCombo;
+      Storage.set('maxComboEver', this._maxComboEver);
+    }
+
+    // Track highest wave
+    if (this.wave > this.highestWave) {
+      this.highestWave = this.wave;
+      Storage.set('highestWave', this.highestWave);
+    }
+
+    // Check achievements
+    this.checkAchievements();
+  },
+
+  // Simulated percentile: "You beat X% of warriors"
+  getSimulatedPercentile() {
+    if (this.highScore >= 5000) return 99;
+    if (this.highScore >= 3000) return 95;
+    if (this.highScore >= 1500) return 85;
+    if (this.highScore >= 800)  return 70;
+    if (this.highScore >= 400)  return 50;
+    if (this.highScore >= 150)  return 30;
+    return 10;
+  },
+
+  generateDailyTarget() {
+    const today = new Date().toDateString();
+    if (this._dailyTargetDate === today) return;
+    this._dailyTargetDate = today;
+    // Generate a score target based on player's skill
+    const base = Math.max(100, this.highScore * 0.6);
+    const target = Math.floor(base / 50) * 50 + 50; // round to nearest 50
+    this.dailyTarget = Math.max(100, target);
+    this.dailyTargetClaimed = false;
+    Storage.set('dailyTarget', this.dailyTarget);
+    Storage.set('dailyTargetClaimed', false);
+    Storage.set('dailyTargetDate', today);
+  },
+
+  claimDailyTarget() {
+    if (this.dailyTargetClaimed) return null;
+    if (this.score < this.dailyTarget) return null;
+    this.dailyTargetClaimed = true;
+    Storage.set('dailyTargetClaimed', true);
+    const reward = { coins: Math.floor(this.dailyTarget / 5), gems: 1 };
+    this.coins += reward.coins;
+    this.gems += reward.gems;
+    Storage.set('coins', this.coins);
+    Storage.set('gems', this.gems);
+    return reward;
+  },
+
+  showLeaderboard() {
+    this.showScreen('leaderboard-screen');
+
+    // Rank display
+    const rank = this.getRankTier();
+    const nextRank = this.getNextRank();
+    const progress = this.getRankProgress();
+    const percentile = this.getSimulatedPercentile();
+    document.getElementById('rank-display').innerHTML = `${rank.icon} ${rank.name} <span style="font-size:0.7rem;color:var(--text-dim)">— 超越 ${percentile}% 战士</span>`;
+    document.getElementById('rank-progress-bar').style.width = progress + '%';
+    if (nextRank) {
+      document.getElementById('rank-progress-text').textContent = `距 ${nextRank.icon}${nextRank.name} 还需 ${nextRank.minWave - this.highestWave} 波`;
+    } else {
+      document.getElementById('rank-progress-text').textContent = '已达最高段位！';
+    }
+
+    // Personal bests
+    document.getElementById('lb-high-score').textContent = this.highScore;
+    document.getElementById('lb-high-wave').textContent = this.highestWave;
+    document.getElementById('lb-total-kills').textContent = this.totalKills;
+    document.getElementById('lb-streak').textContent = this.dailyStreak;
+
+    // Score history
+    const histEl = document.getElementById('lb-history');
+    if (this.scoreHistory.length === 0) {
+      histEl.innerHTML = '<p class="lb-empty">还没有战绩，快去战斗吧！⚔️</p>';
+    } else {
+      histEl.innerHTML = this.scoreHistory.slice(0, 10).map((r, i) => {
+        const medals = ['🥇','🥈','🥉'];
+        const rankIcon = i < 3 ? medals[i] : `${i + 1}`;
+        return `<div class="lb-record">
+          <span class="lb-rank">${rankIcon}</span>
+          <span class="lb-detail">🏆${r.score} · 🌊${r.wave}波 · 💀${r.kills}杀</span>
+          <span class="lb-score">${r.date}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // Achievements
+    const achEl = document.getElementById('lb-achievements');
+    achEl.innerHTML = ACHIEVEMENTS.map(a => {
+      const unlocked = this.achievements.includes(a.id);
+      return `<div class="lb-achievement ${unlocked ? 'unlocked' : 'locked'}">
+        <span class="ach-icon">${unlocked ? a.icon : '🔒'}</span>
+        <span class="ach-name">${a.name}</span>
+      </div>`;
+    }).join('');
+
+    // Daily challenge
+    this.generateDailyTarget();
+    const dEl = document.getElementById('lb-daily-info');
+    if (this.dailyTargetClaimed) {
+      dEl.innerHTML = `✅ 今日已完成！目标 ${this.dailyTarget} 分 — 已领取奖励`;
+    } else {
+      dEl.innerHTML = `🎯 今日目标: <strong>${this.dailyTarget}</strong> 分 — 达成奖励 🪙${Math.floor(this.dailyTarget/5)} + 💎1`;
+    }
   },
 
   updateHUD() {
@@ -2138,11 +3173,13 @@ const game = {
     document.getElementById('hp-text').textContent = Math.ceil(p.hp) + '/' + p.maxHp;
     document.getElementById('shield-indicator').classList.toggle('hidden', !p.hasShield);
     const weapon = WEAPONS[this.player.weaponType] || WEAPONS.pistol;
-    document.getElementById('weapon-indicator').textContent = weapon.icon + ' ' + weapon.name;
+    const wData = this.ownedWeapons[this.player.weaponType];
+    const wLvl = wData?.level || 1;
+    document.getElementById('weapon-indicator').textContent = weapon.icon + ' ' + weapon.name + ' Lv.' + wLvl;
     document.getElementById('wave-display').textContent = `第 ${this.wave} 波`;
     document.getElementById('enemy-count').textContent = `敌人: ${this.enemiesRemaining}`;
     document.getElementById('score-display').textContent = this.score;
-    document.getElementById('coin-display-hud').textContent = this.coinsEarned;
+    document.getElementById('star-display-hud').textContent = this.starsEarned;
     document.getElementById('gem-display-hud').textContent = this.gems;
 
     // Active effects
@@ -2286,29 +3323,29 @@ const game = {
       }
     }
 
-    // Update coins
-    for (let i = coins.length - 1; i >= 0; i--) {
-      coins[i].update(dt);
-      if (coins[i].dead) {
-        coins.splice(i, 1);
+    // Update stars
+    for (let i = starsArr.length - 1; i >= 0; i--) {
+      starsArr[i].update(dt);
+      if (starsArr[i].dead) {
+        starsArr.splice(i, 1);
         continue;
       }
-      const d = dist(coins[i], p);
-      const pickupRange = 20 + (p.magnetActive > 0 ? CFG.COIN_MAGNET_RANGE : 0);
-      if (d < coins[i].radius + pickupRange) {
+      const d = dist(starsArr[i], p);
+      const pickupRange = 20 + (p.magnetActive > 0 ? CFG.MAGNET_RANGE : 0);
+      if (d < starsArr[i].radius + pickupRange) {
         // Magnet pull
         if (p.magnetActive > 0 && d > 20) {
-          const a = angle(coins[i], p);
-          coins[i].x += Math.cos(a) * 300 * dt;
-          coins[i].y += Math.sin(a) * 300 * dt;
+          const a = angle(starsArr[i], p);
+          starsArr[i].x += Math.cos(a) * 300 * dt;
+          starsArr[i].y += Math.sin(a) * 300 * dt;
         }
-        if (d < coins[i].radius + 20) {
-          const coinGainMult = 1 + (this.upgrades.coinGain || 0) * 0.1;
-          const val = Math.round(coins[i].value * coinGainMult);
-          this.coinsEarned += val;
+        if (d < starsArr[i].radius + 20) {
+          const starGainMult = 1 + (this.upgrades.coinGain || 0) * 0.1;
+          const val = Math.round(starsArr[i].value * starGainMult);
+          this.starsEarned += val;
           this.score += val;
-          Sound.coin();
-          coins.splice(i, 1);
+          Sound.star();
+          starsArr.splice(i, 1);
         }
       }
     }
@@ -2326,13 +3363,35 @@ const game = {
       document.getElementById('death-score').textContent = this.score;
       document.getElementById('death-wave').textContent = this.wave;
       document.getElementById('death-kills').textContent = `${this.kills} (最大连杀 ${this.maxCombo})`;
-      document.getElementById('death-coins').textContent = this.coinsEarned;
+      document.getElementById('death-stars').textContent = this.starsEarned;
       document.getElementById('revive-token-count').textContent = this.reviveTokens + '个';
       document.getElementById('btn-revive-ad').style.display = this.adWatched ? 'none' : 'block';
       document.getElementById('btn-revive-token').style.display = this.reviveTokens > 0 ? 'block' : 'none';
       document.getElementById('death-hint').textContent = this.reviveUsed
         ? '本局已复活过一次，再次阵亡无法复活'
         : '';
+
+      // "One more game" progression hook
+      const deathProgEl = document.getElementById('death-progress');
+      if (deathProgEl) {
+        const rank = this.getRankTier();
+        const nextRank = this.getNextRank();
+        // Find next unowned weapon to hint at progression
+        const nextWpn = Object.values(WEAPONS).find(w =>
+          w.unlockCost > 0 && !this.ownedWeapons[w.id]?.owned
+        );
+        let msg = `${rank.icon} ${rank.name} · 本局获得 <strong>${this.starsEarned}⭐</strong>`;
+        if (nextWpn) {
+          const pct = Math.min(100, Math.round(this.starsEarned / nextWpn.unlockCost * 100));
+          msg += `<br/>解锁 ${nextWpn.name} 需要 <strong>${nextWpn.unlockCost}⭐</strong> · 本局进度 ${pct}%`;
+        }
+        if (nextRank && this.wave >= nextRank.minWave - 3) {
+          msg += `<br/><span style="color:${nextRank.color}">🔥 距${nextRank.name}还差 ${nextRank.minWave - this.wave} 波！</span>`;
+        }
+        deathProgEl.innerHTML = msg;
+        deathProgEl.classList.remove('hidden');
+      }
+
       this.showScreen('death-screen');
       this.state = 'dead';
     }
@@ -2361,8 +3420,8 @@ const game = {
     this.drawBackground(ctx);
 
     if (this.state === 'playing' || this.state === 'dead' || this.state === 'paused') {
-      // Draw coins
-      coins.forEach(c => c.draw(ctx));
+      // Draw stars
+      starsArr.forEach(c => c.draw(ctx));
 
       // Draw power-ups
       powerups.forEach(pu => pu.draw(ctx));
