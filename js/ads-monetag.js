@@ -1,34 +1,41 @@
 // ============================================================
-// MONETAG AD PROVIDER — Real Rewarded Video Ads for Web
+// MONETAG AD PROVIDER — Real Rewarded Interstitial Ads for Web
 // ============================================================
 // This file sets window.__AD_PROVIDER__ before game.js loads.
 // AdManager.detectEnv() picks it up and switches to web_sdk mode.
 //
-// Setup:
-//   1. Register at https://monetag.com
-//   2. Add your site, get the Site ID
-//   3. Replace YOUR_SITE_ID below
-//   4. Also update data-site-id in index.html <script> tag
+// HOW IT WORKS:
+//   Monetag provides a "vignette" script that creates a global
+//   show_<zoneId>() function returning a Promise.
+//     → Promise resolves = user completed the ad
+//     → Promise rejects  = no fill / error
 //
-// How it works:
-//   - Shows the ad-modal with a 15-second countdown timer
-//   - During the countdown, attempts to show Monetag ads (best-effort)
-//   - Timer ALWAYS completes — anti-abuse enforcement
-//   - If ads fail to load, UX is unchanged (timer still runs)
+//   This provider loads the vignette script dynamically in init(),
+//   then calls show_<zoneId>() when the user requests a rewarded ad.
+//   A 15-second countdown timer ALWAYS runs as fallback — this is
+//   the anti-abuse guarantee: users must either watch a real ad OR
+//   wait the full duration to get a reward.
+//
+// SETUP:
+//   1. Register at https://monetag.com
+//   2. Add your site, get a Zone ID (number) and delivery domain
+//   3. Set AD_CONFIG.zoneId below
+//   4. Set AD_CONFIG.domain below (from your Monetag dashboard)
+//   5. Update zoneId in sw.js to match
 // ============================================================
 
 const AD_CONFIG = {
-  // --- REQUIRED: Replace with your Monetag Site ID ---
-  siteId: 'YOUR_SITE_ID',
+  // --- REQUIRED: Your Monetag zone ID (number, not string) ---
+  zoneId: 11227733,
 
-  // --- Ad duration in seconds (must match CFG.AD_DURATION in game.js) ---
+  // --- Monetag delivery domain (from dashboard > Sites > Site Settings) ---
+  domain: '3nbf4.com',
+
+  // --- Timer fallback duration in seconds (must match CFG.AD_DURATION) ---
   adDuration: 15,
 
-  // --- Set to false to disable real ads (fallback to timer-only) ---
+  // --- Master kill switch: false = timer-only dev mode ---
   monetagEnabled: true,
-
-  // --- Show sponsor placeholder text during countdown ---
-  showPlaceholder: true,
 };
 
 // ============================================================
@@ -36,49 +43,92 @@ const AD_CONFIG = {
 // ============================================================
 const MonetagAdProvider = {
   _initialized: false,
+  _sdkReady: false,
+  _sdkFailed: false,
+  _sdkFnName: '',
   _interval: null,
+  _adResolved: false,
 
-  // --- Initialize ---
+  // --- Initialize: dynamically load Monetag vignette script ---
   init() {
     this._initialized = true;
-    if (AD_CONFIG.monetagEnabled && typeof monetag !== 'undefined') {
-      console.log('[MonetagAd] ✅ SDK detected, real ads enabled');
-      console.log('[MonetagAd] Site ID:', AD_CONFIG.siteId);
-    } else if (AD_CONFIG.monetagEnabled) {
-      console.log('[MonetagAd] ⚠️ SDK not detected — timer-only mode (no ads)');
-      console.log('[MonetagAd] Tip: Add the Monetag script tag to index.html');
-    } else {
-      console.log('[MonetagAd] 🔧 monetagEnabled=false — timer-only mode');
+    this._sdkFnName = 'show_' + AD_CONFIG.zoneId;
+
+    if (!AD_CONFIG.monetagEnabled) {
+      console.log('[MonetagAd] monetagEnabled=false — timer-only mode');
+      return;
     }
+
+    // Check if vignette script is already loaded (e.g. cached page)
+    if (typeof window[this._sdkFnName] === 'function') {
+      this._sdkReady = true;
+      console.log('[MonetagAd] Vignette function already available:', this._sdkFnName);
+      return;
+    }
+
+    // Build the vignette script URL
+    const scriptUrl = 'https://' + AD_CONFIG.domain + '/vignette.min.js';
+    console.log('[MonetagAd] Loading vignette SDK:', scriptUrl);
+
+    const script = document.createElement('script');
+    script.src = scriptUrl;
+    script.dataset.zone = String(AD_CONFIG.zoneId);
+    script.dataset.sdk = this._sdkFnName;
+    script.async = true;
+
+    script.onload = () => {
+      // Verify the global function was created
+      if (typeof window[this._sdkFnName] === 'function') {
+        this._sdkReady = true;
+        console.log('[MonetagAd] ✅ Vignette SDK ready —', this._sdkFnName);
+      } else {
+        console.warn(
+          '[MonetagAd] ⚠️ Vignette script loaded but %s not found — timer-only mode',
+          this._sdkFnName
+        );
+      }
+    };
+
+    script.onerror = () => {
+      this._sdkFailed = true;
+      console.warn('[MonetagAd] ⚠️ Vignette SDK failed to load — timer-only mode');
+    };
+
+    document.head.appendChild(script);
   },
 
-  // --- Always ready (timer-based approach) ---
+  // --- Always ready: timer fallback guarantees availability ---
   isReady() {
     return true;
   },
 
   // --- Show rewarded ad experience ---
+  // callbacks: { onStart, onComplete, onError, onSkip }
   showRewardedVideo(callbacks) {
     const game = window._gameInstance;
+    this._adResolved = false;
 
     // Notify game that ad experience started
     if (callbacks.onStart) callbacks.onStart();
 
-    // Pause background game loop if game exposes it
+    // Pause the game loop
     if (game && typeof game.pause === 'function') {
       game.pause();
     }
 
+    // --- Handle missing game instance (simple timer fallback) ---
     if (!game) {
-      // No game instance — fallback to simple timer
       console.warn('[MonetagAd] No game instance, using simple timer');
       setTimeout(() => {
-        if (callbacks.onComplete) callbacks.onComplete();
+        if (!this._adResolved && callbacks.onComplete) {
+          this._adResolved = true;
+          callbacks.onComplete();
+        }
       }, AD_CONFIG.adDuration * 1000);
       return;
     }
 
-    // Show the existing ad-modal UI
+    // --- Show the ad-modal UI ---
     game.showScreen('ad-modal');
 
     // Get DOM elements
@@ -87,7 +137,7 @@ const MonetagAdProvider = {
     const placeholder = document.querySelector('.ad-placeholder');
 
     // Update placeholder content
-    if (placeholder && AD_CONFIG.showPlaceholder) {
+    if (placeholder) {
       placeholder.innerHTML = `
         <p style="font-size:1.5rem;margin-bottom:8px;">🎮 广告播放中...</p>
         <p style="font-size:0.85rem;color:#888;">请勿关闭此页面</p>
@@ -95,12 +145,47 @@ const MonetagAdProvider = {
       `;
     }
 
-    // Attempt to show Monetag ads (best-effort, non-blocking)
-    if (AD_CONFIG.monetagEnabled) {
-      this._attemptMonetagAds(placeholder);
+    // ============================================================
+    // Attempt to show real Monetag vignette ad (best-effort)
+    // ============================================================
+    if (this._sdkReady && AD_CONFIG.monetagEnabled) {
+      const showFn = window[this._sdkFnName];
+      if (typeof showFn === 'function') {
+        console.log('[MonetagAd] 📺 Calling', this._sdkFnName + '()');
+
+        showFn()
+          .then(() => {
+            // User completed the real ad
+            console.log('[MonetagAd] ✅ Real ad completed');
+            if (!this._adResolved) {
+              this._resolveAd(callbacks);
+            }
+          })
+          .catch((err) => {
+            // No fill or error — normal, timer fallback handles it
+            console.log('[MonetagAd] ℹ️ Ad no-fill or error:', err?.message || err);
+          });
+      }
+    } else if (AD_CONFIG.monetagEnabled && !this._sdkReady && !this._sdkFailed) {
+      // SDK still loading — give it a few seconds, then fall back
+      console.log('[MonetagAd] ⏳ SDK still loading, will try in 2s...');
+      const sdkFnName = this._sdkFnName;
+      const self = this;
+      setTimeout(() => {
+        if (!self._adResolved && typeof window[sdkFnName] === 'function') {
+          console.log('[MonetagAd] 📺 SDK now ready, calling', sdkFnName + '()');
+          window[sdkFnName]()
+            .then(() => {
+              if (!self._adResolved) self._resolveAd(callbacks);
+            })
+            .catch(() => {}); // fallback handled by timer
+        }
+      }, 2000);
     }
 
-    // Start countdown timer (runs regardless of ad outcome)
+    // ============================================================
+    // Start countdown timer (ALWAYS runs — anti-abuse enforcement)
+    // ============================================================
     let remaining = AD_CONFIG.adDuration;
     if (text) text.textContent = '剩余 ' + remaining + ' 秒';
     if (fill) fill.style.width = '0%';
@@ -112,81 +197,45 @@ const MonetagAdProvider = {
       if (text) text.textContent = '剩余 ' + remaining + ' 秒';
 
       if (remaining <= 0) {
-        clearInterval(this._interval);
-        this._interval = null;
-
-        // Hide the ad modal
-        const modal = document.getElementById('ad-modal');
-        if (modal) modal.classList.add('hidden');
-
-        // Reward the user
-        if (callbacks.onComplete) callbacks.onComplete();
+        // Timer expired — reward user (if not already rewarded by real ad)
+        if (!this._adResolved) {
+          this._resolveAd(callbacks);
+        }
       }
     }, 1000);
   },
 
-  // --- Attempt Monetag ad displays (all try/catch wrapped) ---
-  _attemptMonetagAds(placeholder) {
-    if (typeof monetag === 'undefined') return;
+  // --- Internal: grant reward and clean up ---
+  _resolveAd(callbacks) {
+    this._adResolved = true;
 
-    // Strategy 1: Popunder / popup (Monetag Pop tag / OnClick)
-    try {
-      if (typeof monetag.popunder === 'function') {
-        monetag.popunder();
-        console.log('[MonetagAd] 📺 Popunder ad triggered');
-      } else if (typeof monetag.showPopunder === 'function') {
-        monetag.showPopunder();
-        console.log('[MonetagAd] 📺 Popunder ad triggered (showPopunder)');
-      } else if (typeof monetag.pop === 'function') {
-        monetag.pop();
-        console.log('[MonetagAd] 📺 Pop ad triggered');
-      }
-    } catch (e) {
-      console.log('[MonetagAd] Popunder ad not available:', e.message);
+    // Clear the countdown timer
+    if (this._interval) {
+      clearInterval(this._interval);
+      this._interval = null;
     }
 
-    // Strategy 2: Native ad in placeholder area
-    try {
-      if (placeholder && typeof monetag.nativeAd === 'function') {
-        monetag.nativeAd({
-          container: placeholder,
-          fallback: () => {
-            console.log('[MonetagAd] Native ad no fill');
-          },
-        });
-        console.log('[MonetagAd] 📺 Native ad requested for placeholder');
-      }
-    } catch (e) {
-      console.log('[MonetagAd] Native ad not available:', e.message);
+    // Hide the ad modal
+    const modal = document.getElementById('ad-modal');
+    if (modal) modal.classList.add('hidden');
+
+    // Resume game if paused
+    const game = window._gameInstance;
+    if (game && typeof game.resume === 'function') {
+      game.resume();
     }
 
-    // Strategy 3: Push notification subscription prompt
-    try {
-      if (typeof monetag.pushNotification === 'function') {
-        monetag.pushNotification();
-        console.log('[MonetagAd] 🔔 Push notification prompt triggered');
-      }
-    } catch (e) {
-      console.log('[MonetagAd] Push notification not available:', e.message);
-    }
-
-    // Strategy 4: Direct link / offer wall
-    try {
-      if (typeof monetag.directLink === 'function') {
-        monetag.directLink();
-        console.log('[MonetagAd] 🔗 Direct link ad triggered');
-      }
-    } catch (e) {
-      console.log('[MonetagAd] Direct link not available:', e.message);
-    }
+    // Grant reward
+    if (callbacks.onComplete) callbacks.onComplete();
   },
 
-  // --- Cleanup (called if needed externally) ---
+  // --- Cleanup ---
   destroy() {
     if (this._interval) {
       clearInterval(this._interval);
       this._interval = null;
     }
+    this._adResolved = false;
   },
 };
 

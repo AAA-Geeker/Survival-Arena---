@@ -6,7 +6,11 @@
 <title>Survival Arena - 生存竞技场</title>
 <link rel="stylesheet" href="css/style.css">
 	<!-- ============================================================
-	     Monetag Service Worker registration for site verification
+	     Monetag Ad Integration
+	     CONFIGURATION: Edit js/ads-monetag.js → AD_CONFIG object
+	       - zoneId:  Your Monetag zone ID (number)
+	       - domain:  Your Monetag delivery domain
+	     See AD_INTEGRATION.md for full setup guide.
 	     ============================================================ -->
 	<script>
 	  if ('serviceWorker' in navigator) {
@@ -16,7 +20,7 @@
 	  }
 	</script>
 
-	<!-- Monetag → AdManager adapter（必须放在 game.js 之前） -->
+	<!-- Monetag → AdManager adapter（必须在 game.js 之前加载） -->
 	<script src="js/ads-monetag.js"></script>
 </head>
 <body>

@@ -48,7 +48,7 @@ const AD_WECHAT_UNIT_ID = 'adunit-xxxxxxxxxxxxxxxx'; // 替换为你的真实 ID
 
 ---
 
-## 方案二：接入 Monetag（Web 独立站）
+## 方案二：接入 Monetag（Web 独立站）✅ 已集成
 
 ### 适用场景
 游戏部署在独立域名（PC/手机浏览器打开）
@@ -56,56 +56,80 @@ const AD_WECHAT_UNIT_ID = 'adunit-xxxxxxxxxxxxxxxx'; // 替换为你的真实 ID
 ### 接入步骤
 
 #### 1. 注册账号
-访问 [monetag.com](https://monetag.com) 注册 → 添加网站 → 获取 Site ID
+访问 [monetag.com](https://monetag.com) 注册 → 添加网站 → 获取 **Zone ID**（数字）和 **Delivery Domain**（如 `3nbf4.com`）
 
-#### 2. 添加 SDK
-在 `index.html` 的 `<head>` 中添加 Monetag JS SDK：
+#### 2. 修改配置
+编辑 `js/ads-monetag.js` 顶部的 `AD_CONFIG` 对象：
 
-```html
-<script src="https://www.monetag.com/sdk.js" data-site-id="YOUR_SITE_ID"></script>
+```js
+const AD_CONFIG = {
+  zoneId: YOUR_ZONE_ID,        // 替换为你的 Zone ID（数字）
+  domain: '3nbf4.com',         // 替换为你的 Delivery Domain
+  adDuration: 15,              // 计时器时长（秒）
+  monetagEnabled: true,        // false = 仅倒计时模式（开发测试用）
+};
 ```
 
-#### 3. 创建适配器
-在 `index.html` 的 `<script>` 中添加（放在 Monetag SDK 之后）：
+#### 3. 更新 Service Worker
+编辑 `sw.js`，确保 `zoneId` 与 `AD_CONFIG.zoneId` 一致：
 
-```html
-<script>
-// Monetag → AdManager adapter
-window.__AD_PROVIDER__ = {
-  init() {
-    // Monetag auto-initializes via script tag
-    console.log('[Ad] Monetag adapter ready');
-  },
-  isReady() { return true; },
-  showRewardedVideo(callbacks) {
-    // Monetag rewarded video API
-    if (typeof monetag !== 'undefined' && monetag.showRewarded) {
-      monetag.showRewarded({
-        onComplete: function() {
-          callbacks.onComplete();
-        },
-        onClose: function() {
-          callbacks.onSkip();
-        },
-        onError: function(err) {
-          callbacks.onError(err);
-        }
-      });
-    } else {
-      // Fallback to simulated
-      callbacks.onError('Monetag SDK not loaded');
-    }
-  }
-};
-</script>
+```js
+self.options = {
+    "domain": "3nbf4.com",     // 与 AD_CONFIG.domain 一致
+    "zoneId": 11227733          // 与 AD_CONFIG.zoneId 一致
+}
 ```
 
 #### 4. 完成
-`AdManager` 检测到 `window.__AD_PROVIDER__` 后自动切换。
+`AdManager` 在启动时自动调用 `AdManager.init()`，检测到 `window.__AD_PROVIDER__` 后自动切换为 `web_sdk` 模式。
+
+### 工作原理
+
+Monetag 使用 **Vignette（插屏广告）** 格式：
+
+1. `ads-monetag.js` 在 `init()` 时动态加载 Monetag 的 vignette 脚本（`https://<domain>/vignette.min.js`）
+2. 该脚本创建全局函数 `window.show_<zoneId>()`，调用后返回一个 **Promise**
+3. **Promise 成功** → 用户完成了广告 → 立即发放奖励
+4. **Promise 失败** → 广告无填充 / 加载失败 → 倒计时结束后照常发放奖励
+
+### 防滥用设计
+
+无论真实广告是否加载成功，**15 秒倒计时始终运行**：
+- 真实广告可用 → 用户观看广告（通常 15-30 秒），Promise resolve 后立即奖励
+- 广告无填充 → 用户等待 15 秒倒计时，计时结束发放奖励
+- SDK 加载失败 → 自动降级为纯倒计时模式
+
+这确保用户无法跳过等待直接获得奖励，保护变现模型完整性。
 
 ### 收益参考
 - 激励视频 eCPM：¥3-15（取决于地区）
 - 每次观看收入：约 ¥0.003-0.015
+- Vignette 填充率通常高于传统激励视频
+
+### 测试模式
+
+在浏览器 Console 中切换模式：
+
+```js
+// 纯倒计时模式（开发调试）
+AD_CONFIG.monetagEnabled = false;
+
+// 查看 SDK 状态
+MonetagAdProvider._sdkReady;   // true = SDK 已加载
+MonetagAdProvider._sdkFnName;  // 'show_11227733'
+
+// 查看当前广告提供商
+AdManager.getProviderName();   // 'web_sdk'
+```
+
+- Vignette 填充率通常高于传统激励视频
+
+### 测试模式
+
+在浏览器 Console 中切换模式：
+
+
+
 
 ---
 
