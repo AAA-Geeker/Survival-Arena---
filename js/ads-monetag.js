@@ -60,10 +60,18 @@ const MonetagAdProvider = {
   // --- Show rewarded ad experience ---
   showRewardedVideo(callbacks) {
     const game = window._gameInstance;
+
+    // Notify game that ad experience started
+    if (callbacks.onStart) callbacks.onStart();
+
+    // Pause background game loop if game exposes it
+    if (game && typeof game.pause === 'function') {
+      game.pause();
+    }
+
     if (!game) {
       // No game instance — fallback to simple timer
       console.warn('[MonetagAd] No game instance, using simple timer');
-      if (callbacks.onStart) callbacks.onStart();
       setTimeout(() => {
         if (callbacks.onComplete) callbacks.onComplete();
       }, AD_CONFIG.adDuration * 1000);
@@ -87,15 +95,12 @@ const MonetagAdProvider = {
       `;
     }
 
-    // Notify game that ad experience started
-    if (callbacks.onStart) callbacks.onStart();
-
-    // --- Attempt to show Monetag ads (best-effort, non-blocking) ---
+    // Attempt to show Monetag ads (best-effort, non-blocking)
     if (AD_CONFIG.monetagEnabled) {
       this._attemptMonetagAds(placeholder);
     }
 
-    // --- Start countdown timer (runs regardless of ad outcome) ---
+    // Start countdown timer (runs regardless of ad outcome)
     let remaining = AD_CONFIG.adDuration;
     if (text) text.textContent = '剩余 ' + remaining + ' 秒';
     if (fill) fill.style.width = '0%';
@@ -124,7 +129,7 @@ const MonetagAdProvider = {
   _attemptMonetagAds(placeholder) {
     if (typeof monetag === 'undefined') return;
 
-    // Strategy 1: Popunder ad (opens in new window, doesn't interrupt game)
+    // Strategy 1: Popunder / popup (Monetag Pop tag / OnClick)
     try {
       if (typeof monetag.popunder === 'function') {
         monetag.popunder();

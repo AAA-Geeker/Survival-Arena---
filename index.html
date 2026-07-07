@@ -5,9 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Survival Arena - 生存竞技场</title>
 <link rel="stylesheet" href="css/style.css">
-	<!-- Monetag Ad SDK — replace data-site-id with your real ID from monetag.com -->
-	<script src="https://www.monetag.com/sdk.js" data-site-id="YOUR_SITE_ID" async></script>
-	<!-- Monetag → AdManager adapter (must load before game.js) -->
+	<!-- ============================================================
+	     Monetag Service Worker registration for site verification
+	     ============================================================ -->
+	<script>
+	  if ('serviceWorker' in navigator) {
+	    navigator.serviceWorker.register('sw.js')
+	      .then(reg => console.log('[Monetag] SW registered:', reg.scope))
+	      .catch(err => console.error('[Monetag] SW registration failed:', err));
+	  }
+	</script>
+
+	<!-- Monetag → AdManager adapter（必须放在 game.js 之前） -->
 	<script src="js/ads-monetag.js"></script>
 </head>
 <body>
