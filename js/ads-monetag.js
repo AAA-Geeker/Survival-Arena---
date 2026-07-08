@@ -26,10 +26,10 @@
 
 const AD_CONFIG = {
   // --- REQUIRED: Your Monetag zone ID (number, not string) ---
-  zoneId: 11227733,
+  zoneId: 11255309,
 
   // --- Monetag delivery domain (from dashboard > Sites > Site Settings) ---
-  domain: '3nbf4.com',
+  domain: '5gvci.com',
 
   // --- Timer fallback duration in seconds (must match CFG.AD_DURATION) ---
   adDuration: 15,
