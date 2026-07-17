@@ -3683,12 +3683,73 @@ window.addEventListener('mousedown', (e) => {
     keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false;
   }
 
-  // Shoot button
+  // ============================================================
+  // Right-side aiming + shooting (touch anywhere on right half)
+  // ============================================================
+  let aimTouchId = null;
+  let autoFireInterval = null;
+
+  function isRightSide(x) {
+    return x > window.innerWidth / 2;
+  }
+
+  // Touch on canvas or right side = aim + auto-fire
+  canvas.addEventListener('touchstart', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (isRightSide(t.clientX) && aimTouchId === null) {
+        e.preventDefault();
+        aimTouchId = t.identifier;
+        mouse.x = t.clientX;
+        mouse.y = t.clientY;
+        startAutoFire();
+        return;
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (t.identifier === aimTouchId) {
+        e.preventDefault();
+        mouse.x = t.clientX;
+        mouse.y = t.clientY;
+        return;
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === aimTouchId) {
+        aimTouchId = null;
+        stopAutoFire();
+        return;
+      }
+    }
+  });
+
+  canvas.addEventListener('touchcancel', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === aimTouchId) {
+        aimTouchId = null;
+        stopAutoFire();
+        return;
+      }
+    }
+  });
+
+  // Shoot button as secondary fire trigger
   shootBtn.addEventListener('touchstart', function(e) {
     e.preventDefault();
     shootTouchId = e.changedTouches[0].identifier;
     shootBtn.classList.add('active');
-    // Continuous fire while holding
+    // Update aim to roughly center-right if no active aim touch
+    if (aimTouchId === null) {
+      mouse.x = window.innerWidth * 0.75;
+      mouse.y = window.innerHeight / 2;
+    }
     startAutoFire();
   }, { passive: false });
 
@@ -3697,7 +3758,7 @@ window.addEventListener('mousedown', (e) => {
       if (e.changedTouches[i].identifier === shootTouchId) {
         shootTouchId = null;
         shootBtn.classList.remove('active');
-        stopAutoFire();
+        if (aimTouchId === null) stopAutoFire();
         break;
       }
     }
@@ -3706,22 +3767,17 @@ window.addEventListener('mousedown', (e) => {
   shootBtn.addEventListener('touchcancel', function() {
     shootTouchId = null;
     shootBtn.classList.remove('active');
-    stopAutoFire();
+    if (aimTouchId === null) stopAutoFire();
   });
 
-  let autoFireInterval = null;
   function startAutoFire() {
     if (autoFireInterval) return;
-    // Show indicator
     document.getElementById('mobile-auto-fire-indicator').classList.remove('hidden');
     autoFireInterval = setInterval(function() {
       if (game && game.state === 'playing' && game.player && game.player.alive) {
-        // Update mouse position to center (aim roughly forward)
-        mouse.x = window.innerWidth / 2;
-        mouse.y = window.innerHeight / 2;
         game.player.tryShoot(mouse);
       }
-    }, 100); // ~10 shots per second
+    }, 100);
   }
 
   function stopAutoFire() {
