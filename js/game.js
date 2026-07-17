@@ -1148,7 +1148,7 @@ const game = {
   waveCountdownAction: null, // 'startNextWave' | 'spawnWave'
   enemiesRemaining: 0,
   totalEnemiesThisWave: 0,
-  reviveUsed: false,
+  _usedReviveMethods: {},
   adWatched: false,
 
   // Screen shake
@@ -1328,7 +1328,8 @@ const game = {
     Storage.set('pendingStarBonus', 0);
     this.kills = 0;
     this.state = 'playing';
-    this.reviveUsed = false;
+    this._usedReviveMethods = {};
+    this._reviveMethod = null;
     this.adWatched = false;
     this.activePauseTab = 'weapons';
     // Load persistent equipment
@@ -1514,9 +1515,9 @@ const game = {
   },
 
   revive(method) {
-    // Enforce MAX_REVIVES_PER_RUN — one revive per game session
-    if (this.reviveUsed) {
-      this.showToast('⚠️ 本局已复活过一次，无法再次复活');
+    // Prevent reusing the same method twice
+    if (this._usedReviveMethods[method]) {
+      this.showToast('⚠️ 该复活方式已使用过，请选择其他方式');
       return;
     }
     this.player.alive = true;
@@ -1525,7 +1526,8 @@ const game = {
     this.player.x = canvas.width / 2;
     this.player.y = canvas.height / 2;
     this.state = 'playing';
-    this.reviveUsed = true;
+    // Mark this method as used
+    this._usedReviveMethods[method] = true;
     this._reviveMethod = method || 'unknown';
     // 📊 埋点：复活方式
     Analytics.trackRevive(this._reviveMethod);
@@ -3420,29 +3422,29 @@ const game = {
         starsEarned: this.starsEarned,
         duration: gameDuration,
         weapon: this.player.weaponType,
-        revived: this.reviveUsed,
-        reviveMethod: this.reviveUsed ? this._reviveMethod : null,
+        revived: Object.keys(this._usedReviveMethods || {}).length > 0,
+        reviveMethods: Object.keys(this._usedReviveMethods || {}).join(','),
       });
       spawnParticles(p.x, p.y, 25, '#ff5252', 8, 1);
       document.getElementById('death-score').textContent = this.score;
       document.getElementById('death-wave').textContent = this.wave;
       document.getElementById('death-kills').textContent = `${this.kills} (最大连杀 ${this.maxCombo})`;
       document.getElementById('death-stars').textContent = this.starsEarned;
-      document.getElementById('revive-token-count').textContent = this.reviveTokens + '个';
-      // If already revived this run, hide all revive options
-      if (this.reviveUsed) {
-        document.getElementById('btn-revive-ad').style.display = 'none';
-        document.getElementById('btn-revive-token').style.display = 'none';
-        document.getElementById('btn-revive-friend').style.display = 'none';
-        document.getElementById('btn-revive-gems').style.display = 'none';
-        document.getElementById('death-hint').textContent = '本局已复活过一次，再次阵亡无法复活';
+      // Show/hide each revive method individually (each method usable once per game)
+      const used = this._usedReviveMethods || {};
+      document.getElementById('btn-revive-ad').style.display = (used['ad'] || this.adWatched) ? 'none' : 'block';
+      document.getElementById('btn-revive-token').style.display = (used['token'] || this.reviveTokens <= 0) ? 'none' : 'block';
+      document.getElementById('btn-revive-friend').style.display = used['friend'] ? 'none' : 'block';
+      document.getElementById('btn-revive-gems').style.display = used['gems'] ? 'none' : 'block';
+      // Count remaining methods
+      const allMethods = ['ad','token','friend','gems'];
+      const remaining = allMethods.filter(function(m) { return !used[m]; });
+      if (remaining.length === 0) {
+        document.getElementById('death-hint').textContent = '所有复活方式已用完，无法再次复活';
       } else {
-        document.getElementById('btn-revive-ad').style.display = this.adWatched ? 'none' : 'block';
-        document.getElementById('btn-revive-token').style.display = this.reviveTokens > 0 ? 'block' : 'none';
-        document.getElementById('btn-revive-friend').style.display = 'block';
-        document.getElementById('btn-revive-gems').style.display = 'block';
-        document.getElementById('death-hint').textContent = '';
+        document.getElementById('death-hint').textContent = '剩余 ' + remaining.length + ' 种复活方式可用';
       }
+      document.getElementById('revive-token-count').textContent = this.reviveTokens + '个';
 
       // "One more game" progression hook
       const deathProgEl = document.getElementById('death-progress');
