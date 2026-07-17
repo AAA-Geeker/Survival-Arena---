@@ -3606,6 +3606,150 @@ window.addEventListener('mousedown', (e) => {
   if (e.target.tagName === 'CANVAS') e.preventDefault();
 });
 
+// ============================================================
+// Mobile Touch Controls
+// ============================================================
+(function setupMobileControls() {
+  const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  if (!isMobile) return;
+
+  const joystickArea = document.getElementById('mobile-joystick-area');
+  const joystickThumb = document.getElementById('mobile-joystick-thumb');
+  const shootBtn = document.getElementById('mobile-shoot-btn');
+  const pauseBtn = document.getElementById('mobile-pause-btn');
+  let joystickActive = false;
+  let joystickId = null;
+  let shootTouchId = null;
+
+  // Virtual joystick
+  joystickArea.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    if (joystickActive) return;
+    joystickActive = true;
+    joystickId = e.changedTouches[0].identifier;
+    updateJoystick(e.changedTouches[0]);
+  }, { passive: false });
+
+  joystickArea.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joystickId) {
+        updateJoystick(e.changedTouches[i]);
+        break;
+      }
+    }
+  }, { passive: false });
+
+  joystickArea.addEventListener('touchend', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joystickId) {
+        joystickActive = false;
+        joystickId = null;
+        resetJoystick();
+        break;
+      }
+    }
+  });
+
+  joystickArea.addEventListener('touchcancel', function() {
+    joystickActive = false;
+    joystickId = null;
+    resetJoystick();
+  });
+
+  function updateJoystick(touch) {
+    const rect = joystickArea.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const maxDist = rect.width / 2 - 25;
+    let dx = touch.clientX - cx;
+    let dy = touch.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > maxDist) {
+      dx = dx / dist * maxDist;
+      dy = dy / dist * maxDist;
+    }
+    joystickThumb.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
+    // Convert to movement keys
+    const threshold = 10;
+    keys['KeyW'] = dy < -threshold;
+    keys['KeyS'] = dy > threshold;
+    keys['KeyA'] = dx < -threshold;
+    keys['KeyD'] = dx > threshold;
+  }
+
+  function resetJoystick() {
+    joystickThumb.style.transform = 'translate(-50%, -50%)';
+    keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false;
+  }
+
+  // Shoot button
+  shootBtn.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    shootTouchId = e.changedTouches[0].identifier;
+    shootBtn.classList.add('active');
+    // Continuous fire while holding
+    startAutoFire();
+  }, { passive: false });
+
+  shootBtn.addEventListener('touchend', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === shootTouchId) {
+        shootTouchId = null;
+        shootBtn.classList.remove('active');
+        stopAutoFire();
+        break;
+      }
+    }
+  });
+
+  shootBtn.addEventListener('touchcancel', function() {
+    shootTouchId = null;
+    shootBtn.classList.remove('active');
+    stopAutoFire();
+  });
+
+  let autoFireInterval = null;
+  function startAutoFire() {
+    if (autoFireInterval) return;
+    // Show indicator
+    document.getElementById('mobile-auto-fire-indicator').classList.remove('hidden');
+    autoFireInterval = setInterval(function() {
+      if (game && game.state === 'playing' && game.player && game.player.alive) {
+        // Update mouse position to center (aim roughly forward)
+        mouse.x = window.innerWidth / 2;
+        mouse.y = window.innerHeight / 2;
+        game.player.tryShoot(mouse);
+      }
+    }, 100); // ~10 shots per second
+  }
+
+  function stopAutoFire() {
+    if (autoFireInterval) {
+      clearInterval(autoFireInterval);
+      autoFireInterval = null;
+    }
+    document.getElementById('mobile-auto-fire-indicator').classList.add('hidden');
+  }
+
+  // Pause button
+  pauseBtn.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    if (game && game.state === 'playing') {
+      game.pause();
+    }
+  });
+
+  // Prevent zooming on double-tap
+  document.addEventListener('touchstart', function(e) {
+    if (e.target.closest('#mobile-controls') || e.target.tagName === 'CANVAS') {
+      if (e.touches.length > 1) e.preventDefault();
+    }
+  }, { passive: false });
+
+  console.log('[Mobile] Touch controls initialized');
+})();
+
 // --- Canvas ---
 const canvas = document.getElementById('game-canvas');
 

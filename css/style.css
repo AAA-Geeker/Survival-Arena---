@@ -1404,6 +1404,123 @@ body {
   border-radius: 8px;
 }
 
+/* Mobile Touch Controls */
+#mobile-controls {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+#mobile-controls > * { pointer-events: auto; }
+
+/* Joystick Area */
+#mobile-joystick-area {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  width: 140px;
+  height: 140px;
+}
+#mobile-joystick {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.2);
+  position: relative;
+  margin: 10px;
+}
+#mobile-joystick-thumb {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  border: 2px solid rgba(255,255,255,0.4);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: none;
+}
+
+/* Shoot Button */
+#mobile-shoot-area {
+  position: absolute;
+  bottom: 100px;
+  right: 20px;
+}
+#mobile-shoot-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(233,69,96,0.3);
+  border: 3px solid rgba(233,69,96,0.6);
+  color: #fff;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+#mobile-shoot-btn:active,
+#mobile-shoot-btn.active {
+  background: rgba(233,69,96,0.6);
+  border-color: #e94560;
+  transform: scale(0.9);
+}
+
+/* Pause Button */
+#mobile-pause-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 31;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Auto-fire indicator */
+#mobile-auto-fire-indicator {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(22,199,154,0.2);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 4px 14px;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  z-index: 31;
+}
+
+/* Show mobile controls on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  #mobile-controls { display: block; }
+  #mobile-pause-btn { display: block; }
+  #mobile-auto-fire-indicator.hidden { display: none; }
+  #mobile-auto-fire-indicator:not(.hidden) { display: block; }
+}
+
+/* Show mobile controls on small screens too */
+@media (max-width: 768px) {
+  #mobile-controls { display: block; }
+  .menu-controls-hint { display: none; }
+  #btn-logout { font-size: 0.7rem; padding: 3px 10px; }
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .game-title { font-size: 2rem; }
