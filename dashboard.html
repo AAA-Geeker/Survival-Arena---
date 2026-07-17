@@ -14,13 +14,11 @@ body{font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;backgroun
 h1{text-align:center;font-size:1.8rem;margin-bottom:4px;background:linear-gradient(135deg,var(--primary),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .subtitle{text-align:center;color:var(--text-dim);margin-bottom:6px;font-size:0.85rem}
 
-/* Time filter */
 .time-filter{display:flex;justify-content:center;gap:8px;margin-bottom:24px;flex-wrap:wrap}
 .time-btn{padding:8px 20px;border:1px solid rgba(255,255,255,0.12);border-radius:20px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:0.82rem;transition:all 0.2s}
 .time-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .time-btn:hover:not(.active){border-color:rgba(255,255,255,0.3);color:var(--text)}
 
-/* KPI Cards */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:24px;max-width:1100px;margin-left:auto;margin-right:auto}
 .kpi-card{background:var(--surface);border-radius:14px;padding:16px 14px;text-align:center;border:1px solid rgba(255,255,255,0.06);transition:transform 0.2s}
 .kpi-card:hover{transform:translateY(-2px)}
@@ -29,37 +27,32 @@ h1{text-align:center;font-size:1.8rem;margin-bottom:4px;background:linear-gradie
 .kpi-card .kpi-sub{font-size:0.7rem;color:var(--text-dim);margin-top:2px}
 .kpi-card .kpi-label{font-size:0.75rem;color:var(--text-dim);margin-top:4px}
 
-/* Section */
 .section{max-width:1100px;margin:0 auto 20px}
 .section h2{font-size:1.05rem;color:var(--accent);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06)}
 .section .section-desc{font-size:0.75rem;color:var(--text-dim);margin-bottom:10px}
 
-/* Tables */
 .data-table{width:100%;border-collapse:collapse;font-size:0.85rem}
 .data-table th{background:rgba(255,255,255,0.04);padding:10px 12px;text-align:left;font-size:0.73rem;color:var(--text-dim);letter-spacing:0.5px}
 .data-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04)}
 .data-table tr:hover{background:rgba(255,255,255,0.02)}
 .data-table .num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
 
-/* Bar charts */
 .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
 .bar-label{min-width:110px;font-size:0.8rem;text-align:right}
 .bar-track{flex:1;height:26px;background:rgba(255,255,255,0.05);border-radius:6px;overflow:hidden;position:relative}
 .bar-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:6px;transition:width 0.5s}
 .bar-val{position:absolute;top:50%;left:8px;transform:translateY(-50%);font-size:0.73rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
 
-/* Two-column layout */
 .cols-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:700px){.cols-2{grid-template-columns:1fr}}
 
-/* Loading / Error */
 .loading{text-align:center;padding:50px;color:var(--text-dim)}
 .spinner{display:inline-block;width:24px;height:24px;border:2px solid rgba(255,255,255,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;margin-right:8px;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
-.error{text-align:center;padding:20px;color:var(--primary);background:rgba(233,69,96,0.1);border-radius:10px;line-height:1.8}
-.error button{margin-top:8px;padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem}
-
-/* Footer */
+.err-box{text-align:center;padding:20px;color:var(--primary);background:rgba(233,69,96,0.1);border-radius:10px;line-height:1.8;max-width:600px;margin:0 auto}
+.err-box button{margin-top:8px;padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem}
+.success-box{text-align:center;padding:20px;color:var(--accent);background:rgba(22,199,154,0.1);border:1px solid rgba(22,199,154,0.2);border-radius:10px;line-height:1.8;max-width:600px;margin:20px auto}
+.warn-box{text-align:center;padding:16px;color:var(--gold);background:rgba(240,192,64,0.08);border:1px solid rgba(240,192,64,0.2);border-radius:10px;line-height:1.6;max-width:600px;margin:20px auto;font-size:0.85rem}
 .footer{text-align:center;color:var(--text-dim);font-size:0.7rem;margin-top:30px;padding-bottom:20px}
 .footer a{color:var(--accent);text-decoration:none}
 .footer a:hover{text-decoration:underline}
@@ -76,7 +69,6 @@ h1{text-align:center;font-size:1.8rem;margin-bottom:4px;background:linear-gradie
 <h1>🎮 生存竞技场 · 数据面板</h1>
 <p class="subtitle">实时游戏数据分析 · 用户行为追踪 · 变现漏斗监控</p>
 
-<!-- 时间筛选 -->
 <div class="time-filter" id="time-filter">
   <button class="time-btn active" data-range="today">📅 今日</button>
   <button class="time-btn" data-range="7d">📆 近7天</button>
@@ -85,12 +77,12 @@ h1{text-align:center;font-size:1.8rem;margin-bottom:4px;background:linear-gradie
 </div>
 
 <div id="app">
-  <div class="loading"><span class="spinner"></span>正在从 Supabase 加载数据...</div>
+  <div class="loading"><span class="spinner"></span>正在连接 Supabase...</div>
 </div>
 
 <script>
 // ============================================================
-// Supabase 配置（与游戏项目共用）
+// Supabase 配置
 // ============================================================
 var SUPABASE_URL = 'https://jafbdgiupihatjfebdvq.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_HB7mHMXkvM6-I7ALRhMxXw_KAHAacNx';
@@ -104,82 +96,95 @@ function apiHeaders() {
   };
 }
 
-// ============================================================
-// 查询工具函数
-// ============================================================
+// 带超时的 fetch（5秒超时）
+function fetchWithTimeout(url, options, timeoutMs) {
+  timeoutMs = timeoutMs || 5000;
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, timeoutMs);
+  options = options || {};
+  options.signal = controller.signal;
+  return fetch(url, options).finally(function() { clearTimeout(timer); });
+}
+
 function timeFilter(range) {
   var now = new Date();
-  if (range === 'today') {
-    return '&timestamp=gte.' + now.toISOString().split('T')[0] + 'T00:00:00Z';
-  }
-  if (range === '7d') {
-    var d = new Date(now - 7*86400000);
-    return '&timestamp=gte.' + d.toISOString().split('T')[0] + 'T00:00:00Z';
-  }
-  if (range === '30d') {
-    var d = new Date(now - 30*86400000);
-    return '&timestamp=gte.' + d.toISOString().split('T')[0] + 'T00:00:00Z';
-  }
+  if (range === 'today') return '&timestamp=gte.' + now.toISOString().split('T')[0] + 'T00:00:00Z';
+  if (range === '7d')   { var d = new Date(now - 7*86400000); return '&timestamp=gte.' + d.toISOString().split('T')[0] + 'T00:00:00Z'; }
+  if (range === '30d')  { var d = new Date(now - 30*86400000); return '&timestamp=gte.' + d.toISOString().split('T')[0] + 'T00:00:00Z'; }
   return '';
 }
 
 async function queryCount(filter) {
   filter = filter || '';
-  var base = SUPABASE_URL + '/rest/v1/' + TABLE;
-  var url = base + '?select=id' + filter + '&limit=1';
-  var res = await fetch(url, { headers: Object.assign({}, apiHeaders(), { 'Prefer': 'count=exact' }) });
-  if (!res.ok) return 0;
-  var range = res.headers.get('content-range');
-  if (range) { var parts = range.split('/'); return parseInt(parts[1]) || 0; }
-  return 0;
+  var url = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=id' + filter + '&limit=1';
+  try {
+    var res = await fetchWithTimeout(url, { headers: Object.assign({}, apiHeaders(), { 'Prefer': 'count=exact' }) });
+    if (!res.ok) return -1;
+    var range = res.headers.get('content-range');
+    if (range) { var parts = range.split('/'); return parseInt(parts[1]) || 0; }
+    return 0;
+  } catch(e) { return -1; }
 }
 
 async function queryAll(select, filter, order, limit) {
-  select = select || '*';
-  filter = filter || '';
-  order = order || '';
-  limit = limit || 100;
-  var base = SUPABASE_URL + '/rest/v1/' + TABLE;
-  var url = base + '?select=' + encodeURIComponent(select);
+  select = select || '*'; filter = filter || ''; order = order || ''; limit = limit || 100;
+  var url = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=' + encodeURIComponent(select);
   if (filter) url += '&' + filter;
   if (order) url += '&order=' + encodeURIComponent(order);
   if (limit) url += '&limit=' + limit;
-  var res = await fetch(url, { headers: apiHeaders() });
-  if (!res.ok) return [];
-  return res.json();
+  try {
+    var res = await fetchWithTimeout(url, { headers: apiHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  } catch(e) { return []; }
 }
 
 async function countDistinct(field, timeRange) {
   timeRange = timeRange || '';
-  var base = SUPABASE_URL + '/rest/v1/' + TABLE;
-  var url = base + '?select=' + field + timeRange + '&limit=10000';
-  var res = await fetch(url, { headers: apiHeaders() });
-  if (!res.ok) return 0;
-  var rows = await res.json();
-  var set = new Set();
-  rows.forEach(function(r) { set.add(r[field]); });
-  return set.size;
+  var url = SUPABASE_URL + '/rest/v1/' + TABLE + '?select=' + field + timeRange + '&limit=10000';
+  try {
+    var res = await fetchWithTimeout(url, { headers: apiHeaders() });
+    if (!res.ok) return -1;
+    var rows = await res.json();
+    var set = new Set();
+    rows.forEach(function(r) { set.add(r[field]); });
+    return set.size;
+  } catch(e) { return -1; }
 }
 
-// 商品名称中英文映射
+// 商品中文名映射
 var ITEM_NAMES = {
-  'auto_fire':        '🤖 自动射击模块',
-  'skin_default':     '🎨 默认皮肤',
-  'skin_red':         '🎨 赤红皮肤',
-  'skin_blue':        '🎨 蔚蓝皮肤',
-  'skin_gold':        '🎨 黄金皮肤',
-  'skin_dark':        '🎨 暗影皮肤',
-  'skin_neon':        '🎨 霓虹皮肤',
+  'auto_fire': '🤖 自动射击模块',
+  'skin_default': '🎨 默认皮肤', 'skin_red': '🎨 赤红皮肤', 'skin_blue': '🎨 蔚蓝皮肤',
+  'skin_gold': '🎨 黄金皮肤', 'skin_dark': '🎨 暗影皮肤', 'skin_neon': '🎨 霓虹皮肤',
 };
-
 function itemLabel(id) {
   if (ITEM_NAMES[id]) return ITEM_NAMES[id];
   if (id.indexOf('skin_') === 0) return '🎨 ' + id.replace('skin_', '皮肤-');
   return id;
 }
+var WEAPON_NAMES = { pistol:'🔫 手枪', shotgun:'💥 霰弹枪', smg:'⚡ 冲锋枪', sniper:'🎯 狙击枪' };
 
 // ============================================================
-// 加载面板数据
+// 辅助渲染函数
+// ============================================================
+function kpiCard(icon, value, label, sub) {
+  return '<div class="kpi-card">'
+    + '<div class="kpi-icon">' + icon + '</div>'
+    + '<div class="kpi-value">' + (value != null && value >= 0 ? value : '-') + '</div>'
+    + (sub ? '<div class="kpi-sub">' + sub + '</div>' : '')
+    + '<div class="kpi-label">' + label + '</div></div>';
+}
+function funnelBar(label, count, total, color, unit) {
+  var pct = total > 0 ? Math.round(count / total * 100) : 0;
+  return '<div class="bar-row"><span class="bar-label">' + label + '</span>'
+    + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '"></div>'
+    + '<span class="bar-val">' + count + ' ' + unit + ' (' + pct + '%)</span></div></div>';
+}
+function emptyMsg() { return '<p style="color:var(--text-dim);text-align:center;padding:16px">暂无数据</p>'; }
+
+// ============================================================
+// 主加载函数 — 所有查询并行执行
 // ============================================================
 var currentRange = 'today';
 
@@ -188,69 +193,108 @@ async function loadDashboard(range) {
   currentRange = range;
   var app = document.getElementById('app');
   var timeLabel = { today:'今日', '7d':'近7天', '30d':'近30天', all:'全部' }[range] || range;
+  var tf = timeFilter(range);
+
+  // 先检查表是否存在
+  app.innerHTML = '<div class="loading"><span class="spinner"></span>检查数据库连接...</div>';
+  var tableCheck = await queryCount('');
+  if (tableCheck === -1) {
+    app.innerHTML = '<div class="err-box">'
+      + '<p>❌ <b>数据库表未找到</b></p>'
+      + '<p style="font-size:0.8rem;color:var(--text-dim)">'
+      + '请先在 Supabase SQL Editor 中执行 <code>sql/create_tables.sql</code> 创建 <code>game_events</code> 表</p>'
+      + '<p style="font-size:0.75rem;color:var(--text-dim)">'
+      + '1. 登录 <a href="https://supabase.com/dashboard/project/jafbdgiupihatjfebdvq" target="_blank" style="color:var(--accent)">Supabase 控制台</a><br>'
+      + '2. 进入 SQL Editor<br>'
+      + '3. 复制并执行项目中的 <code>sql/create_tables.sql</code></p>'
+      + '<button onclick="loadDashboard(currentRange)">🔄 建表后点击重试</button></div>';
+    return;
+  }
+
+  app.innerHTML = '<div class="loading"><span class="spinner"></span>正在加载 ' + timeLabel + ' 数据...</div>';
 
   try {
-    var tf = timeFilter(range);
+    // 🔥 所有独立查询并行执行（关键优化）
+    var results = await Promise.all([
+      queryCount(''),                                    // 0: totalEvents
+      countDistinct('player_id', tf),                    // 1: totalPlayers
+      countDistinct('session_id', tf),                   // 2: totalSessions
+      queryCount(tf + '&event_type=eq.game_start'),       // 3: gameStarts
+      queryCount(tf + '&event_type=eq.game_end'),         // 4: gameEnds
+      queryCount(tf + '&event_type=eq.death'),            // 5: deaths
+      queryCount(tf + '&event_type=eq.revive'),           // 6: revives
+      queryCount(tf + '&event_type=eq.login'),            // 7: logins
+      queryCount(tf + '&event_type=eq.purchase'),         // 8: purchases
+      queryCount(tf + '&event_type=eq.ad_watched'),       // 9: adWatched
+      queryCount(tf + '&event_type=eq.daily_claim'),      // 10: dailyClaims
+      queryCount(tf + '&event_type=eq.achievement_unlock'), // 11: achievements
+      queryAll('event_data', tf + '&event_type=eq.revive', '', 1000),     // 12: reviveRows
+      queryAll('event_data', tf + '&event_type=eq.purchase', '', 1000),   // 13: purchaseRows
+      queryAll('event_data', tf + '&event_type=eq.death', 'timestamp.desc', 500), // 14: deathRows
+      queryAll('event_data', tf + '&event_type=eq.login', '', 500),       // 15: loginRows
+      queryAll('event_data', tf + '&event_type=eq.game_end', 'timestamp.desc', 500), // 16: gameEndRows
+    ]);
 
-    // --- 核心指标 ---
-    var totalEvents   = await queryCount(tf);
-    var totalPlayers  = await countDistinct('player_id', tf);
-    var totalSessions = await countDistinct('session_id', tf);
+    var totalEvents = Math.max(0, results[0]);
+    var totalPlayers = Math.max(0, results[1]);
+    var totalSessions = Math.max(0, results[2]);
+    var gameStarts = Math.max(0, results[3]);
+    var gameEnds = Math.max(0, results[4]);
+    var deaths = Math.max(0, results[5]);
+    var revives = Math.max(0, results[6]);
+    var logins = Math.max(0, results[7]);
+    var purchases = Math.max(0, results[8]);
+    var adWatched = Math.max(0, results[9]);
+    var dailyClaims = Math.max(0, results[10]);
+    var achievements = Math.max(0, results[11]);
+    var reviveRows = results[12];
+    var purchaseRows = results[13];
+    var deathRows = results[14];
+    var loginRows = results[15];
+    var gameEndRows = results[16];
 
-    var gameStarts = await queryCount(tf + '&event_type=eq.game_start');
-    var gameEnds   = await queryCount(tf + '&event_type=eq.game_end');
-    var deaths     = await queryCount(tf + '&event_type=eq.death');
-    var revives    = await queryCount(tf + '&event_type=eq.revive');
-    var logins     = await queryCount(tf + '&event_type=eq.login');
-    var purchases  = await queryCount(tf + '&event_type=eq.purchase');
-    var adWatched  = await queryCount(tf + '&event_type=eq.ad_watched');
-    var dailyClaims= await queryCount(tf + '&event_type=eq.daily_claim');
-    var achievementUnlocks = await queryCount(tf + '&event_type=eq.achievement_unlock');
+    // 全部返回 -1 说明表为空（无数据但表存在）
+    var allMinusOne = [totalPlayers, totalSessions, gameStarts, deaths, revives].every(function(v) { return v === -1; });
+    if (allMinusOne) {
+      app.innerHTML = '<div class="warn-box">'
+        + '<p>📭 <b>数据库已连接，但还没有任何游戏数据</b></p>'
+        + '<p style="font-size:0.8rem;color:var(--text-dim)">去玩一局游戏，数据就会自动出现在这里！</p>'
+        + '<a href="index.html" style="color:var(--accent);font-size:0.85rem">🎮 返回游戏</a></div>';
+      return;
+    }
 
-    // --- 复活方式明细 ---
-    var reviveRows = await queryAll('event_data', tf + '&event_type=eq.revive', '', 1000);
+    // --- 复活方式统计 ---
     var reviveByMethod = { ad:0, token:0, friend:0, gems:0 };
     reviveRows.forEach(function(r) {
-      try { var d = JSON.parse(r.event_data); if (reviveByMethod.hasOwnProperty(d.method)) reviveByMethod[d.method]++; }
-      catch(e) {}
+      try { var d = JSON.parse(r.event_data); if (reviveByMethod.hasOwnProperty(d.method)) reviveByMethod[d.method]++; } catch(e) {}
     });
 
     // --- 购买排行 ---
-    var purchaseRows = await queryAll('event_data', tf + '&event_type=eq.purchase', '', 1000);
     var purchaseByItem = {};
     purchaseRows.forEach(function(r) {
-      try { var d = JSON.parse(r.event_data); purchaseByItem[d.item] = (purchaseByItem[d.item] || 0) + 1; }
-      catch(e) {}
+      try { var d = JSON.parse(r.event_data); purchaseByItem[d.item] = (purchaseByItem[d.item] || 0) + 1; } catch(e) {}
     });
 
     // --- 死亡波次 ---
-    var deathRows = await queryAll('event_data', tf + '&event_type=eq.death', 'timestamp.desc', 500);
     var deathsByWave = {};
     deathRows.forEach(function(r) {
-      try { var d = JSON.parse(r.event_data); var w = d.wave || 1; deathsByWave[w] = (deathsByWave[w] || 0) + 1; }
-      catch(e) {}
+      try { var d = JSON.parse(r.event_data); var w = d.wave || 1; deathsByWave[w] = (deathsByWave[w] || 0) + 1; } catch(e) {}
     });
 
     // --- 登录方式 ---
-    var loginRows = await queryAll('event_data', tf + '&event_type=eq.login', '', 500);
     var loginByMethod = {};
     loginRows.forEach(function(r) {
-      try { var d = JSON.parse(r.event_data); loginByMethod[d.method] = (loginByMethod[d.method] || 0) + 1; }
-      catch(e) {}
+      try { var d = JSON.parse(r.event_data); loginByMethod[d.method] = (loginByMethod[d.method] || 0) + 1; } catch(e) {}
     });
 
-    // --- 游戏对局平均数据 ---
-    var gameEndRows = await queryAll('event_data', tf + '&event_type=eq.game_end', 'timestamp.desc', 500);
+    // --- 游戏对局平均 ---
     var totalScore = 0, totalWave = 0, totalKills = 0, totalDuration = 0, countEnd = gameEndRows.length;
     var weaponUsage = {};
     gameEndRows.forEach(function(r) {
       try { var d = JSON.parse(r.event_data);
-        totalScore    += (d.score || 0);
-        totalWave     += (d.wave || 1);
-        totalKills    += (d.kills || 0);
-        totalDuration += (d.duration_sec || 0);
-        var w = d.weapon_used || '未知';
-        weaponUsage[w] = (weaponUsage[w] || 0) + 1;
+        totalScore += (d.score || 0); totalWave += (d.wave || 1);
+        totalKills += (d.kills || 0); totalDuration += (d.duration_sec || 0);
+        var w = d.weapon_used || '未知'; weaponUsage[w] = (weaponUsage[w] || 0) + 1;
       } catch(e) {}
     });
     var avgScore = countEnd > 0 ? Math.round(totalScore / countEnd) : 0;
@@ -258,188 +302,129 @@ async function loadDashboard(range) {
     var avgKills = countEnd > 0 ? Math.round(totalKills / countEnd) : 0;
     var avgDuration = countEnd > 0 ? Math.round(totalDuration / countEnd) : 0;
 
-    // --- 武器名称映射 ---
-    var WEAPON_NAMES = { pistol:'🔫 手枪', shotgun:'💥 霰弹枪', smg:'⚡ 冲锋枪', sniper:'🎯 狙击枪' };
+    var reviveRate = gameStarts > 0 ? Math.round(revives / gameStarts * 100) : 0;
+    var deathRate  = gameStarts > 0 ? Math.round(deaths / gameStarts * 100) : 0;
+    var adFillRate = deaths > 0 ? Math.round(reviveByMethod.ad / deaths * 100) : 0;
 
-    // --- 计算比率 ---
-    var reviveRate  = gameStarts > 0 ? Math.round(revives / gameStarts * 100) : 0;
-    var deathRate   = gameStarts > 0 ? Math.round(deaths / gameStarts * 100) : 0;
-    var adFillRate  = deaths > 0 ? Math.round(reviveByMethod.ad / deaths * 100) : 0;
+    // ===== 渲染 =====
+    var html = '';
 
-    // --- 渲染 ---
-    app.innerHTML = ''
-      // ===== KPI 卡片 =====
-      + '<div class="kpi-grid">'
+    // KPI 卡片
+    html += '<div class="kpi-grid">'
       + kpiCard('👥', totalPlayers, '活跃玩家', timeLabel + '独立用户数')
-      + kpiCard('🎮', gameStarts, '对局数', '累计开局次数')
+      + kpiCard('🎮', gameStarts, '对局数', '累计开局')
       + kpiCard('💀', deaths, '死亡数', '死亡率 ' + deathRate + '%')
       + kpiCard('🔄', revives, '复活数', '复活率 ' + reviveRate + '%')
-      + kpiCard('📺', reviveByMethod.ad, '广告复活', '广告填充率 ' + adFillRate + '%')
-      + kpiCard('👥', reviveByMethod.friend, '好友复活', '社交裂变次数')
-      + kpiCard('🛒', purchases, '商店购买', '累计交易次数')
-      + kpiCard('📅', dailyClaims, '签到数', '每日签到人次')
+      + kpiCard('📺', reviveByMethod.ad, '广告复活', '填充率 ' + adFillRate + '%')
+      + kpiCard('👥', reviveByMethod.friend, '好友复活', '社交裂变')
+      + kpiCard('🛒', purchases, '商店购买', '累计交易')
+      + kpiCard('📅', dailyClaims, '签到数', '累计签到')
       + kpiCard('⭐', avgScore, '均分', '场均得分')
-      + kpiCard('🌊', avgWave, '均波次', '场均到达波次')
-      + kpiCard('💀', avgKills, '均击杀', '场均击杀数')
-      + kpiCard('⏱️', avgDuration + '秒', '均时长', '场均游戏时长')
+      + kpiCard('🌊', avgWave, '均波次', '场均到达')
+      + kpiCard('💀', avgKills, '均击杀', '场均击杀')
+      + kpiCard('⏱️', avgDuration + '秒', '均时长', '场均游戏')
+      + '</div>';
+
+    // 双列：复活漏斗 + 复活方式
+    html += '<div class="cols-2">'
+      + '<div class="section"><h2>🔄 复活转化漏斗</h2>'
+      + funnelBar('开局', gameStarts, Math.max(gameStarts,1), '#16c79a', '局')
+      + funnelBar('死亡', deaths, Math.max(gameStarts,1), '#e94560', '次')
+      + funnelBar('广告复活', reviveByMethod.ad, Math.max(gameStarts,1), '#f39c12', '次')
+      + funnelBar('好友复活', reviveByMethod.friend, Math.max(gameStarts,1), '#3498db', '次')
+      + funnelBar('令牌复活', reviveByMethod.token, Math.max(gameStarts,1), '#2ecc71', '次')
+      + funnelBar('钻石复活', reviveByMethod.gems, Math.max(gameStarts,1), '#a855f7', '次')
       + '</div>'
-
-      // ===== 双列布局 =====
-      + '<div class="cols-2">'
-
-      // --- 复活转化漏斗 ---
-      + '<div class="section">'
-      + '<h2>🔄 复活转化漏斗</h2>'
-      + funnelBar('开局',    gameStarts, gameStarts, '#16c79a', '局')
-      + funnelBar('死亡',    deaths,     gameStarts, '#e94560', '次')
-      + funnelBar('广告复活', reviveByMethod.ad,   gameStarts, '#f39c12', '次')
-      + funnelBar('好友复活', reviveByMethod.friend,gameStarts, '#3498db', '次')
-      + funnelBar('令牌复活', reviveByMethod.token, gameStarts, '#2ecc71', '次')
-      + funnelBar('钻石复活', reviveByMethod.gems,  gameStarts, '#a855f7', '次')
-      + '</div>'
-
-      // --- 复活方式占比 ---
-      + '<div class="section">'
-      + '<h2>📊 复活方式占比</h2>'
-      + '<table class="data-table">'
-      + '<tr><th>复活方式</th><th>次数</th><th>占比</th></tr>'
+      + '<div class="section"><h2>📊 复活方式占比</h2>'
+      + '<table class="data-table"><tr><th>复活方式</th><th>次数</th><th>占比</th></tr>'
       + ['ad','token','friend','gems'].map(function(m) {
-          var count = reviveByMethod[m] || 0;
-          var pct = revives > 0 ? Math.round(count / revives * 100) : 0;
+          var cnt = reviveByMethod[m] || 0;
+          var pct = revives > 0 ? Math.round(cnt / revives * 100) : 0;
           var icons = {ad:'📺 观看广告', token:'🎫 复活令牌', friend:'👥 好友助力', gems:'💎 花费钻石'};
-          return '<tr><td>' + (icons[m] || m) + '</td><td class="num">' + count + '</td><td class="num">' + pct + '%</td></tr>';
+          return '<tr><td>' + (icons[m]||m) + '</td><td class="num">' + cnt + '</td><td class="num">' + pct + '%</td></tr>';
         }).join('')
-      + '</table></div>'
+      + '</table></div></div>';
 
-      + '</div>'  // end cols-2
+    // 双列：死亡波次 + 武器分布
+    var deathWaveHtml = Object.keys(deathsByWave).length > 0
+      ? Object.entries(deathsByWave).sort(function(a,b){return a[0]-b[0];}).slice(0,15).map(function(e) {
+          var w = e[0], cnt = e[1], max = Math.max.apply(null, Object.values(deathsByWave));
+          var pct = max > 0 ? Math.round(cnt / max * 100) : 0;
+          return '<div class="bar-row"><span class="bar-label">第' + w + '波</span>'
+            + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:linear-gradient(90deg,#e94560,#ff9800)"></div>'
+            + '<span class="bar-val">' + cnt + ' 次</span></div></div>';
+        }).join('') : emptyMsg();
 
-      // ===== 双列布局2 =====
-      + '<div class="cols-2">'
-
-      // --- 死亡波次分布 ---
-      + '<div class="section">'
-      + '<h2>💀 死亡波次分布</h2>'
-      + '<p class="section-desc">玩家最容易在哪个波次阵亡（难度平衡参考）</p>'
-      + (Object.keys(deathsByWave).length > 0
-          ? Object.entries(deathsByWave).sort(function(a,b){ return a[0]-b[0]; }).slice(0, 15).map(function(e) {
-              var wave = e[0], count = e[1];
-              var maxCount = Math.max.apply(null, Object.values(deathsByWave));
-              var pct = maxCount > 0 ? Math.round(count / maxCount * 100) : 0;
-              return '<div class="bar-row">'
-                + '<span class="bar-label">第 ' + wave + ' 波</span>'
-                + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:linear-gradient(90deg,#e94560,#ff9800)"></div>'
-                + '<span class="bar-val">' + count + ' 次</span></div></div>';
-            }).join('')
-          : '<p style="color:var(--text-dim);text-align:center;padding:16px">暂无数据</p>')
-      + '</div>'
-
-      // --- 武器使用分布 ---
-      + '<div class="section">'
-      + '<h2>🔫 武器使用分布</h2>'
-      + '<p class="section-desc">不同武器的选择率（反映武器平衡性）</p>'
-      + '<table class="data-table">'
-      + '<tr><th>武器</th><th>使用次数</th><th>占比</th></tr>'
-      + Object.entries(weaponUsage).sort(function(a,b){ return b[1]-a[1]; }).map(function(e) {
-          var name = WEAPON_NAMES[e[0]] || e[0];
+    var weaponHtml = '<table class="data-table"><tr><th>武器</th><th>使用次数</th><th>占比</th></tr>'
+      + Object.entries(weaponUsage).sort(function(a,b){return b[1]-a[1];}).map(function(e) {
           var pct = countEnd > 0 ? Math.round(e[1] / countEnd * 100) : 0;
-          return '<tr><td>' + name + '</td><td class="num">' + e[1] + '</td><td class="num">' + pct + '%</td></tr>';
+          return '<tr><td>' + (WEAPON_NAMES[e[0]]||e[0]) + '</td><td class="num">' + e[1] + '</td><td class="num">' + pct + '%</td></tr>';
         }).join('')
       + (Object.keys(weaponUsage).length === 0 ? '<tr><td colspan="3" style="text-align:center;color:var(--text-dim)">暂无数据</td></tr>' : '')
-      + '</table></div>'
+      + '</table>';
 
-      + '</div>'  // end cols-2
+    html += '<div class="cols-2">'
+      + '<div class="section"><h2>💀 死亡波次分布</h2><p class="section-desc">玩家在哪个波次最容易阵亡（难度参考）</p>' + deathWaveHtml + '</div>'
+      + '<div class="section"><h2>🔫 武器使用分布</h2><p class="section-desc">各武器选择率（平衡性参考）</p>' + weaponHtml + '</div>'
+      + '</div>';
 
-      // ===== 双列布局3 =====
-      + '<div class="cols-2">'
+    // 双列：登录方式 + 购买排行
+    var loginHtml = Object.keys(loginByMethod).length > 0
+      ? '<table class="data-table"><tr><th>登录方式</th><th>次数</th></tr>'
+        + Object.entries(loginByMethod).map(function(e) {
+            var labels = {phone:'📱 手机验证码', password:'🔐 密码登录', email:'📧 邮箱登录'};
+            return '<tr><td>' + (labels[e[0]]||e[0]) + '</td><td class="num">' + e[1] + '</td></tr>';
+          }).join('') + '</table>'
+      : '<table class="data-table"><tr><td style="text-align:center;color:var(--text-dim)">暂无数据</td></tr></table>';
 
-      // --- 登录方式 ---
-      + '<div class="section">'
-      + '<h2>🔑 登录方式分布</h2>'
-      + '<table class="data-table">'
-      + '<tr><th>登录方式</th><th>次数</th></tr>'
-      + Object.entries(loginByMethod).map(function(e) {
-          var labels = {phone:'📱 手机验证码', password:'🔐 密码登录', email:'📧 邮箱登录'};
-          return '<tr><td>' + (labels[e[0]] || e[0]) + '</td><td class="num">' + e[1] + '</td></tr>';
-        }).join('')
-      + (Object.keys(loginByMethod).length === 0 ? '<tr><td colspan="2" style="text-align:center;color:var(--text-dim)">暂无数据</td></tr>' : '')
-      + '</table></div>'
+    var purchaseHtml = Object.keys(purchaseByItem).length > 0
+      ? '<table class="data-table"><tr><th>商品名称</th><th>购买次数</th></tr>'
+        + Object.entries(purchaseByItem).sort(function(a,b){return b[1]-a[1];}).map(function(e) {
+            return '<tr><td>' + itemLabel(e[0]) + '</td><td class="num">' + e[1] + '</td></tr>';
+          }).join('') + '</table>'
+      : '<table class="data-table"><tr><td style="text-align:center;color:var(--text-dim)">暂无数据</td></tr></table>';
 
-      // --- 商店购买排行 ---
-      + '<div class="section">'
-      + '<h2>🛒 商店购买排行</h2>'
-      + '<p class="section-desc">最受欢迎的商品（反映付费意愿）</p>'
-      + '<table class="data-table">'
-      + '<tr><th>商品名称</th><th>购买次数</th></tr>'
-      + Object.entries(purchaseByItem).sort(function(a,b){ return b[1]-a[1]; }).map(function(e) {
-          return '<tr><td>' + itemLabel(e[0]) + '</td><td class="num">' + e[1] + '</td></tr>';
-        }).join('')
-      + (Object.keys(purchaseByItem).length === 0 ? '<tr><td colspan="2" style="text-align:center;color:var(--text-dim)">暂无数据</td></tr>' : '')
-      + '</table></div>'
+    html += '<div class="cols-2">'
+      + '<div class="section"><h2>🔑 登录方式分布</h2>' + loginHtml + '</div>'
+      + '<div class="section"><h2>🛒 商店购买排行</h2><p class="section-desc">最受欢迎的商品（付费意愿参考）</p>' + purchaseHtml + '</div>'
+      + '</div>';
 
-      + '</div>'  // end cols-2
-
-      // ===== 总计行 =====
-      + '<div class="section" style="margin-top:10px">'
-      + '<h2>📋 数据摘要（' + timeLabel + '）</h2>'
+    // 汇总表
+    html += '<div class="section" style="margin-top:10px"><h2>📋 数据摘要（' + timeLabel + '）</h2>'
       + '<table class="data-table">'
       + '<tr><th>指标</th><th>数值</th><th>指标</th><th>数值</th></tr>'
       + '<tr><td>👥 独立玩家</td><td class="num">' + totalPlayers + '</td><td>🔑 登录次数</td><td class="num">' + logins + '</td></tr>'
       + '<tr><td>🔗 独立会话</td><td class="num">' + totalSessions + '</td><td>▶️ 游戏开局</td><td class="num">' + gameStarts + '</td></tr>'
       + '<tr><td>💀 累计死亡</td><td class="num">' + deaths + '</td><td>🔄 累计复活</td><td class="num">' + revives + '</td></tr>'
       + '<tr><td>🛒 商店购买</td><td class="num">' + purchases + '</td><td>📺 广告观看</td><td class="num">' + adWatched + '</td></tr>'
-      + '<tr><td>📅 签到人次</td><td class="num">' + dailyClaims + '</td><td>🏆 成就解锁</td><td class="num">' + achievementUnlocks + '</td></tr>'
+      + '<tr><td>📅 签到人次</td><td class="num">' + dailyClaims + '</td><td>🏆 成就解锁</td><td class="num">' + achievements + '</td></tr>'
       + '<tr><td>📊 总事件数</td><td class="num">' + totalEvents + '</td><td>⏱️ 场均时长</td><td class="num">' + avgDuration + ' 秒</td></tr>'
-      + '</table></div>'
+      + '</table></div>';
 
-      // ===== 页脚 =====
-      + '<div class="footer">'
-      + '📊 数据来源：Supabase <code style="background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:4px">game_events</code> 表 · '
-      + '刷新时间：' + new Date().toLocaleString('zh-CN', {hour12:false}) + ' · '
-      + '<a href="javascript:location.reload()">🔄 刷新数据</a> · '
-      + '<a href="index.html">🎮 返回游戏</a>'
-      + '</div>';
+    // 页脚
+    html += '<div class="footer">📊 数据来源：Supabase <code style="background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:4px">game_events</code> · '
+      + '刷新：' + new Date().toLocaleString('zh-CN', {hour12:false}) + ' · '
+      + '<a href="javascript:location.reload()">🔄 刷新</a> · <a href="index.html">🎮 返回游戏</a></div>';
+
+    app.innerHTML = html;
+
   } catch(e) {
-    app.innerHTML = '<div class="error">'
-      + '<p>❌ 数据加载失败</p>'
-      + '<p style="font-size:0.8rem">' + e.message + '</p>'
-      + '<p style="font-size:0.75rem;color:var(--text-dim)">请检查：<br>'
-      + '1. Supabase 中是否已创建 <code>game_events</code> 表<br>'
-      + '2. 是否已执行 <code>sql/create_tables.sql</code><br>'
-      + '3. 网络连接是否正常</p>'
-      + '<button onclick="location.reload()">🔄 重新加载</button>'
-      + '</div>';
+    app.innerHTML = '<div class="err-box">'
+      + '<p>❌ 渲染失败</p><p style="font-size:0.8rem">' + e.message + '</p>'
+      + '<button onclick="loadDashboard(currentRange)">🔄 重试</button></div>';
   }
 }
 
-// ===== 帮助函数 =====
-function kpiCard(icon, value, label, sub) {
-  return '<div class="kpi-card">'
-    + '<div class="kpi-icon">' + icon + '</div>'
-    + '<div class="kpi-value">' + (value != null ? value : 0) + '</div>'
-    + (sub ? '<div class="kpi-sub">' + sub + '</div>' : '')
-    + '<div class="kpi-label">' + label + '</div>'
-    + '</div>';
-}
-
-function funnelBar(label, count, total, color, unit) {
-  var pct = total > 0 ? Math.round(count / total * 100) : 0;
-  return '<div class="bar-row">'
-    + '<span class="bar-label">' + label + '</span>'
-    + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '"></div>'
-    + '<span class="bar-val">' + count + ' ' + unit + ' (' + pct + '%)</span></div></div>';
-}
-
-// ===== 时间筛选按钮 =====
+// 时间筛选按钮
 document.getElementById('time-filter').addEventListener('click', function(e) {
   if (e.target.classList.contains('time-btn')) {
     document.querySelectorAll('.time-btn').forEach(function(b) { b.classList.remove('active'); });
     e.target.classList.add('active');
-    document.getElementById('app').innerHTML = '<div class="loading"><span class="spinner"></span>正在加载数据...</div>';
     loadDashboard(e.target.dataset.range);
   }
 });
 
-// ===== 启动 =====
+// 启动
 loadDashboard('today');
 </script>
 </body>
