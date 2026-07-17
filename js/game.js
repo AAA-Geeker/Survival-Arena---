@@ -1923,12 +1923,17 @@ const game = {
     // If phone login with code
     if (type === 'phone' && code.length === 6) {
       this._showStatus('success', '验证中...');
-      const result = await Auth.loginWithCode(identifier, code);
-      if (result.success) {
-        this._showStatus('success', '登录成功！');
-        setTimeout(() => this._onLoginSuccess(result.user), 500);
-      } else {
-        this._showStatus('error', result.error);
+      try {
+        const result = await Auth.loginWithCode(identifier, code);
+        if (result.success) {
+          this._showStatus('success', '登录成功！');
+          setTimeout(() => this._onLoginSuccess(result.user), 500);
+        } else {
+          this._showStatus('error', result.error);
+        }
+      } catch (e) {
+        console.error('[Login] Exception:', e);
+        this._showStatus('error', '登录失败，请重试（' + e.message + '）');
       }
       return;
     }
@@ -1938,12 +1943,17 @@ const game = {
 
     // Login
     this._showStatus('success', '正在登录...');
-    const result = await Auth.login(identifier, password);
-    if (result.success) {
-      this._showStatus('success', '登录成功！');
-      setTimeout(() => this._onLoginSuccess(result.user), 500);
-    } else {
-      this._showStatus('error', result.error);
+    try {
+      const result = await Auth.login(identifier, password);
+      if (result.success) {
+        this._showStatus('success', '登录成功！');
+        setTimeout(() => this._onLoginSuccess(result.user), 500);
+      } else {
+        this._showStatus('error', result.error);
+      }
+    } catch (e) {
+      console.error('[Login] Exception:', e);
+      this._showStatus('error', '登录失败，请重试（' + e.message + '）');
     }
   },
 
