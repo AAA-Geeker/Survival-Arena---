@@ -28,13 +28,12 @@ CREATE INDEX IF NOT EXISTS idx_events_session    ON game_events (session_id);
 -- 3. 启用 RLS（行级安全）— 允许匿名插入
 ALTER TABLE game_events ENABLE ROW LEVEL SECURITY;
 
--- 允许所有人写入（因为 publishable key 是非敏感的）
+-- 允许所有人读写（publishable key 是非敏感的，数据面板需要 SELECT）
 CREATE POLICY "Allow anonymous insert" ON game_events
   FOR INSERT WITH CHECK (true);
 
--- 只允许管理员 SELECT（可选：创建 admin 角色后启用）
--- CREATE POLICY "Allow admin select" ON game_events
---   FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow anonymous select" ON game_events
+  FOR SELECT USING (true);
 
 -- 4. 定期清理旧数据（可选：Supabase 自带 pg_cron）
 -- SELECT cron.schedule(
