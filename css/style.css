@@ -1506,19 +1506,78 @@ body {
   z-index: 31;
 }
 
-/* Show mobile controls on touch devices */
+/* Show mobile controls on touch devices (only when game-screen is visible) */
 @media (hover: none) and (pointer: coarse) {
-  #mobile-controls { display: block; }
-  #mobile-pause-btn { display: block; }
+  #game-screen:not(.hidden) #mobile-controls { display: block; }
   #mobile-auto-fire-indicator.hidden { display: none; }
   #mobile-auto-fire-indicator:not(.hidden) { display: block; }
 }
 
 /* Show mobile controls on small screens too */
 @media (max-width: 768px) {
-  #mobile-controls { display: block; }
+  #game-screen:not(.hidden) #mobile-controls { display: block; }
   .menu-controls-hint { display: none; }
   #btn-logout { font-size: 0.7rem; padding: 3px 10px; }
+}
+
+/* Mobile Login Form Fixes */
+@media (max-width: 768px) {
+  /* Larger tap targets */
+  .form-input {
+    font-size: 16px !important;  /* prevent iOS zoom */
+    padding: 16px 14px;
+    -webkit-appearance: none;
+  }
+  .btn {
+    padding: 16px 20px;
+    font-size: 1.1rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-send-code {
+    font-size: 0.9rem;
+    padding: 12px 10px;
+    min-width: 110px;
+    touch-action: manipulation;
+  }
+  .type-btn {
+    font-size: 1rem;
+    padding: 12px 10px;
+    touch-action: manipulation;
+  }
+  .login-content {
+    width: 95%;
+    max-width: 400px;
+  }
+  .code-row {
+    gap: 6px;
+  }
+  .code-input {
+    flex: 1;
+  }
+
+  /* Ensure login screen is above everything */
+  #login-screen {
+    z-index: 100 !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Allow scrolling on mobile for overlay content */
+  .overlay-content {
+    max-height: 80vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make sure body allows interaction */
+  body {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  input, button, select, textarea {
+    touch-action: manipulation;
+  }
 }
 
 /* Responsive */
