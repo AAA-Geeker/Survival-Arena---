@@ -121,7 +121,7 @@ const Auth = {
   async login(identifier, password) {
     await this._delay();
     const users = this._getUsers();
-    const user = users.find(u => u.phone === identifier || u.email === identifier);
+    let user = users.find(u => u.phone === identifier || u.email === identifier);
     if (!user) {
       // 新用户：邮箱+密码自动注册（手机也可用密码注册）
       user = {
