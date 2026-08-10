@@ -115,6 +115,32 @@ const SupabaseDB = {
     return data;
   },
 
+  // ---- 查询多个身份地址的复活令牌（跨设备昵称） ----
+  // Query revives addressed to ANY of the given identities (deviceId + xkey) in one call.
+  async checkAllRevivesFor(addresses) {
+    if (!addresses || addresses.length === 0) return [];
+    const list = Array.from(new Set(addresses));
+    const filter = list.map(a => 'to_player=eq.' + encodeURIComponent(a)).join(',');
+    const url = this._base + '?' + filter + '&order=time.desc';
+
+    console.log('[DB] SELECT ALL FOR →', list);
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: this._headers(),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('[DB] SELECT ALL FOR failed:', res.status, errText);
+      throw new Error('HTTP ' + res.status + ': ' + errText);
+    }
+
+    const data = await res.json();
+    console.log('[DB] ✅ SELECT ALL FOR found', data.length, 'record(s)');
+    return data;
+  },
+
   // ---- 删除已使用的复活令牌 ----
   async deleteRevives(playerId) {
     const url = this._base + '?to_player=eq.' + encodeURIComponent(playerId);

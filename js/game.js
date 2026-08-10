@@ -222,6 +222,32 @@ const Auth = {
   },
 };
 
+// --- Cross-Device Identity Helper ---
+// A player can be reached across devices via two "addresses":
+//   1) deviceId  — Storage.getPlayerId() (stable per-browser localStorage)
+//   2) xkey      — Auth.getCrossDeviceKey() (stable per-login, derived from phone/email)
+// Revive tokens are addressed to the sharer's deviceId AND (when logged in) their xkey,
+// so Player A can verify & claim a revive on ANY device where they're logged into the
+// same account — PC→PC, mobile→mobile, and PC↔mobile all work.
+const Identity = {
+  // All addresses a player can be reached at right now (no duplicates, non-null)
+  addresses() {
+    const set = new Set([Storage.getPlayerId()]);
+    const xkey = Auth.getCrossDeviceKey();
+    if (xkey) set.add(xkey);
+    return Array.from(set);
+  },
+  // The device-local ID
+  deviceId() {
+    return Storage.getPlayerId();
+  },
+  // Stable cross-device key (may be null if not logged in yet)
+  crossKey() {
+    return Auth.getCrossDeviceKey();
+  },
+};
+
+
 // --- Game Constants ---
 const CFG = {
   PLAYER_RADIUS: 16,
@@ -1605,19 +1631,23 @@ const game = {
 
   // --- Referral System ---
   async checkReferral() {
-    // Read ref/sid from URL params first, fall back to sessionStorage
+    // Read ref/sid/xkey from URL params first, fall back to sessionStorage
     // (sessionStorage survives redirects that might strip URL params)
     const params = new URLSearchParams(window.location.search);
     let refId = params.get('ref');
     let sessionId = params.get('sid');
+    // Sharer's stable cross-device key (embedded in the share link when logged in)
+    let sharerXkey = params.get('xkey');
 
     // Backup: persist params in sessionStorage so they survive domain redirects
     // Only fall back individually for missing params (prevents clobbering valid values)
     try {
       if (refId) sessionStorage.setItem('pendingRef', refId);
       if (sessionId) sessionStorage.setItem('pendingSid', sessionId);
+      if (sharerXkey) sessionStorage.setItem('pendingXkey', sharerXkey);
       if (!refId) refId = sessionStorage.getItem('pendingRef');
       if (!sessionId) sessionId = sessionStorage.getItem('pendingSid');
+      if (!sharerXkey) sharerXkey = sessionStorage.getItem('pendingXkey');
     } catch(e) {
       // sessionStorage may be unavailable (private browsing, iframe sandbox)
       console.warn('[Referral] sessionStorage unavailable:', e.message);
@@ -1626,6 +1656,7 @@ const game = {
     // Self-referral guard: check both device-local ID and cross-device auth key
     if (!refId) return;
     const myDeviceId = Storage.getPlayerId();
+    const crossDeviceKey = Auth.getCrossDeviceKey();
 
     // Layer 1: same device
     if (refId === myDeviceId) {
@@ -1633,8 +1664,13 @@ const game = {
       return;
     }
 
-    // Layer 2: same user, different device (cross-device auth key)
-    const crossDeviceKey = Auth.getCrossDeviceKey();
+    // Layer 2a: same user (sharer xkey) === my cross-device key → self-referral
+    if (sharerXkey && crossDeviceKey && sharerXkey === crossDeviceKey) {
+      console.log('[Referral] Self-referral blocked (same account across devices — xkey match):', sharerXkey);
+      return;
+    }
+
+    // Layer 2b: refId happens to equal my cross-device key (legacy links / edge cases)
     if (crossDeviceKey && refId === crossDeviceKey) {
       console.log('[Referral] Self-referral blocked (cross-device key):', refId);
       return;
@@ -1651,6 +1687,7 @@ const game = {
       allLocalIds.push(myDeviceId);
     }
     allLocalIds.push(refId);
+    if (sharerXkey) allLocalIds.push(sharerXkey);
     Storage.set('allLocalIds', allLocalIds);
 
     sessionId = sessionId || 'legacy';
@@ -1674,20 +1711,31 @@ const game = {
       // so the sharer can verify this specific revive session
       const fromPayload = Storage.getPlayerId() + '::' + sessionId;
 
-      // ✅ Write to Supabase so Player A can verify on THEIR device
+      // ✅ Write revive token(s) to Supabase so Player A can verify on THEIR device.
+      // Address the token to BOTH the sharer's device playerId AND (when present) their
+      // cross-device key — this is what makes the revive claimable from ANY of Player A's
+      // devices (PC↔PC, mobile↔mobile, PC↔mobile) under the same login.
+      const targets = [refId];
+      if (sharerXkey) targets.push(sharerXkey);
+
       try {
-        await SupabaseDB.addRevive(fromPayload, refId);
-        console.log('[Referral] ✅ Revive token sent to Supabase for player:', refId, 'session:', sessionId);
+        for (const t of targets) {
+          await SupabaseDB.addRevive(fromPayload, t);
+        }
+        console.log('[Referral] ✅ Revive token sent to Supabase for:', targets, 'session:', sessionId);
       } catch (err) {
         console.warn('[Referral] Supabase unreachable, using localStorage fallback:', err.message);
         const pendingRevives = Storage.get('pendingRevives', []);
-        pendingRevives.push({ from: fromPayload, to: refId, time: Date.now() });
+        for (const t of targets) {
+          pendingRevives.push({ from: fromPayload, to: t, time: Date.now() });
+        }
         Storage.set('pendingRevives', pendingRevives);
       }
 
       // Cleanup sessionStorage after successful processing
       sessionStorage.removeItem('pendingRef');
       sessionStorage.removeItem('pendingSid');
+      sessionStorage.removeItem('pendingXkey');
     }
   },
 
@@ -1695,6 +1743,14 @@ const game = {
     const id = Storage.getPlayerId();
     const url = new URL(window.location.href);
     url.searchParams.set('ref', id);
+    // Embed the sharer's stable cross-device key so revives can be addressed to it,
+    // enabling Player A to verify/claim on ANY of their devices (PC↔PC, mobile↔mobile, PC↔mobile)
+    const xkey = Auth.getCrossDeviceKey();
+    if (xkey) {
+      url.searchParams.set('xkey', xkey);
+    } else {
+      url.searchParams.delete('xkey');
+    }
     // Include unique revive session ID so each death generates a different link
     if (this._reviveSessionId) {
       url.searchParams.set('sid', this._reviveSessionId);
@@ -2579,13 +2635,13 @@ const game = {
 
     const doCheck = async function() {
       checkCount++;
-      const myId = Storage.getPlayerId();
+      const myIds = Identity.addresses(); // deviceId + cross-device key (cross-platform claim)
       const currentSessionId = self._reviveSessionId;
       let foundRevive = null;
 
       // ✅ Query Supabase for pending revive — filter by session ID
       try {
-        const data = await SupabaseDB.checkAllRevives(myId);
+        const data = await SupabaseDB.checkAllRevivesFor(myIds);
         if (data && data.length > 0) {
           // Only match revives from THIS game session's unique link
           foundRevive = data.find(function(r) {
@@ -2596,7 +2652,7 @@ const game = {
         console.warn('[Verify] Supabase query failed, trying localStorage:', err.message);
         const pendingRevives = Storage.get('pendingRevives', []);
         foundRevive = pendingRevives.find(function(r) {
-          return r.to === myId && r.from && r.from.endsWith('::' + currentSessionId);
+          return myIds.indexOf(r.to) !== -1 && r.from && r.from.endsWith('::' + currentSessionId);
         });
       }
 
@@ -2621,10 +2677,10 @@ const game = {
         document.querySelector('.verify-step[data-step="2"]').classList.add('done');
         document.querySelector('.verify-step[data-step="2"]').classList.remove('active');
 
-        // Clean up localStorage fallback — only the matched record
+        // Clean up localStorage fallback — only the matched record(s)
         const pendingRevives = Storage.get('pendingRevives', []);
         const remaining = pendingRevives.filter(function(r) {
-          return !(r.to === myId && r.from && r.from.endsWith('::' + currentSessionId));
+          return !(myIds.indexOf(r.to) !== -1 && r.from && r.from.endsWith('::' + currentSessionId));
         });
         if (remaining.length !== pendingRevives.length) {
           Storage.set('pendingRevives', remaining);
@@ -2635,8 +2691,10 @@ const game = {
           if (foundRevive.id) {
             await SupabaseDB.deleteReviveById(foundRevive.id);
           } else {
-            // Fallback: delete by player (broad)
-            await SupabaseDB.deleteRevives(myId);
+            // Fallback: delete by player (broad) across every address identity
+            for (const a of myIds) {
+              try { await SupabaseDB.deleteRevives(a); } catch (_e) {}
+            }
           }
         } catch (e) {
           console.warn('[Verify] Supabase delete failed:', e.message);
@@ -2734,9 +2792,9 @@ const game = {
       // Only poll when player is in a game (playing or paused) or on menu
       if (self.state !== 'playing' && self.state !== 'paused' && self.state !== 'menu') return;
 
-      const myId = Storage.getPlayerId();
+      const myIds = Identity.addresses(); // deviceId + cross-device key (cross-platform claim)
       try {
-        const data = await SupabaseDB.checkAllRevives(myId);
+        const data = await SupabaseDB.checkAllRevivesFor(myIds);
         if (!data || data.length === 0) return;
 
         // Track known revive IDs to avoid duplicate notifications
@@ -4555,12 +4613,12 @@ game.init();
 
 // ✅ Check for pending revives from Supabase (cross-device)
 (async function checkPendingRevives() {
-  const myId = Storage.getPlayerId();
+  const myIds = Identity.addresses(); // deviceId + cross-device key (cross-platform claim)
 
   // ✅ Query Supabase for pending revives but DO NOT bulk-delete
   // (bulk delete would consume revives that belong to active verification sessions)
   try {
-    const data = await SupabaseDB.checkAllRevives(myId);
+    const data = await SupabaseDB.checkAllRevivesFor(myIds);
     if (data && data.length > 0) {
       // Store pending revives on game object for use in death screen flow
       // Mark each with its session ID for session-aware auto-claim
@@ -4578,7 +4636,7 @@ game.init();
   // Fallback: check localStorage too (for offline or error cases)
   const localRevives = Storage.get('pendingRevives', []);
   if (localRevives.length > 0) {
-    const myLocalRevives = localRevives.filter(r => r.to === myId);
+    const myLocalRevives = localRevives.filter(r => myIds.indexOf(r.to) !== -1);
     if (myLocalRevives.length > 0) {
       // Merge with Supabase results
       if (!game._pendingCrossDeviceRevives) game._pendingCrossDeviceRevives = [];
@@ -4586,7 +4644,7 @@ game.init();
         game._pendingCrossDeviceRevives.push({ from_player: r.from, to_player: r.to, time: r.time, _local: true });
       });
       // Remove processed locals
-      Storage.set('pendingRevives', localRevives.filter(function(r) { return r.to !== myId; }));
+      Storage.set('pendingRevives', localRevives.filter(function(r) { return myIds.indexOf(r.to) === -1; }));
     }
   }
 

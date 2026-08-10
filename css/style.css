@@ -767,6 +767,14 @@ body {
   margin-bottom: 12px;
   line-height: 1.5;
 }
+.share-xdevice {
+  font-size: 0.78rem;
+  color: var(--accent, #16c79a);
+  padding: 6px 10px;
+  background: rgba(22, 199, 154, 0.08);
+  border-radius: 8px;
+  border: 1px dashed rgba(22, 199, 154, 0.35);
+}
 .share-link-container {
   display: flex;
   gap: 8px;
