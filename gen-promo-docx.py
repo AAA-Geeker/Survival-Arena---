@@ -24,6 +24,13 @@ sec.right_margin = Inches(0.8)
 sec.top_margin = Inches(0.7)
 sec.bottom_margin = Inches(0.7)
 
+# Pin document metadata to fixed timestamps so re-generation is byte-stable
+# (prevents git churn from python-docx writing a fresh 'now' on every run).
+import datetime as _dt
+_fixed = _dt.datetime(2026, 8, 12, 0, 0, 0)
+doc.core_properties.created = _fixed
+doc.core_properties.modified = _fixed
+
 def h1(text, color=RED):
     p = doc.add_paragraph()
     r = p.add_run(text)

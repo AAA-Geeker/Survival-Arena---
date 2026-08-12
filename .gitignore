@@ -13,3 +13,7 @@ package-lock.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Python (generator scripts)
+__pycache__/
+*.pyc
