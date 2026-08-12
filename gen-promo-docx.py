@@ -135,4 +135,23 @@ for i, x in enumerate(tips, 1):
 
 out = os.path.join(BASE, '游戏推广文案-生存竞技场.docx')
 doc.save(out)
+
+# Rewrite the zip with a FIXED timestamp on every entry so the .docx is fully
+# byte-stable (python-docx otherwise stamps each zip member with the current time,
+# which makes every re-generation differ in git even when the content is unchanged).
+import zipfile as _zip
+import io as _io
+_TS = (2026, 8, 12, 21, 0, 0)  # year,month,day,hour,min,sec for every entry
+_src = open(out, 'rb').read()
+_buf = _io.BytesIO()
+zout = _zip.ZipFile(_buf, 'w', _zip.ZIP_DEFLATED)
+zin = _zip.ZipFile(_io.BytesIO(_src))
+for item in zin.infolist():
+    zi = _zip.ZipInfo(item.filename, date_time=_TS)
+    zi.compress_type = _zip.ZIP_DEFLATED
+    zi.external_attr = item.external_attr
+    zout.writestr(zi, zin.read(item.filename))
+zout.close()
+open(out, 'wb').write(_buf.getvalue())
+
 print('saved:', out)
