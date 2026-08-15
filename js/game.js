@@ -1724,7 +1724,16 @@ const game = {
         }
         console.log('[Referral] ✅ Revive token sent to Supabase for:', targets, 'session:', sessionId);
       } catch (err) {
-        console.warn('[Referral] Supabase unreachable, using localStorage fallback:', err.message);
+        console.warn('[Referral] Supabase revive write failed, using localStorage fallback:', err.message);
+        // Surface the server-side failure instead of silently pretending revive works.
+        // RLS / permission errors (HTTP 4xx) mean the shared table write is blocked server-side,
+        // so the sharer on ANOTHER device can never see this token — that's a hard break.
+        const isServerBlocked = /^HTTP 4/.test(String(err.message || ''));
+        this.showToast(
+          isServerBlocked
+            ? '⚠️ 好友复活服务暂不可用（服务器拒绝了写入），复活可能无法送达好友'
+            : '⚠️ 网络异常，复活令牌仅保存在本机'
+        );
         const pendingRevives = Storage.get('pendingRevives', []);
         for (const t of targets) {
           pendingRevives.push({ from: fromPayload, to: t, time: Date.now() });

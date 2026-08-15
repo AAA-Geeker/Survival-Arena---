@@ -27,14 +27,28 @@ CREATE INDEX IF NOT EXISTS idx_pending_revives_pair
 -- Enable Row Level Security
 ALTER TABLE pending_revives ENABLE ROW LEVEL SECURITY;
 
--- Allow anonymous inserts (game clients use publishable key)
+-- ============================================================
+-- IMPORTANT: idempotent policy setup
+-- Re-running this file SAFELY recreates ALL anonymous policies.
+-- If a policy was ever dropped/altered (e.g. the INSERT policy missing
+-- due to a partial migration), re-running this restores it.
+-- ============================================================
+
+-- Allow anonymous inserts (game clients use publishable key, which maps to the "anon" role)
+-- REQUIRED for the friend-revive feature to work across devices.
+-- Explicit TO anon, authenticated: the publishable key authenticates as "anon"; if the
+-- policy omits the role it defaults to PUBLIC (also fine) but explicit is safer against
+-- Supabase's wizard generating authenticated-only policies that break anonymous inserts.
+DROP POLICY IF EXISTS "Allow anonymous insert" ON pending_revives;
 CREATE POLICY "Allow anonymous insert" ON pending_revives
-  FOR INSERT WITH CHECK (true);
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- Allow anonymous selects
+DROP POLICY IF EXISTS "Allow anonymous select" ON pending_revives;
 CREATE POLICY "Allow anonymous select" ON pending_revives
-  FOR SELECT USING (true);
+  FOR SELECT TO anon, authenticated USING (true);
 
 -- Allow anonymous deletes (for consuming revives after verification)
+DROP POLICY IF EXISTS "Allow anonymous delete" ON pending_revives;
 CREATE POLICY "Allow anonymous delete" ON pending_revives
-  FOR DELETE USING (true);
+  FOR DELETE TO anon, authenticated USING (true);
