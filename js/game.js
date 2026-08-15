@@ -2024,7 +2024,24 @@ const game = {
   },
 
   // --- Check for saved game and show continue dialog ---
+  // True when this page was opened via a friend-revive share link (ref param in URL
+  // or still pending in sessionStorage). While a referral is being processed, the
+  // saved-game restore dialog must NOT hijack the screen — friend-revive flow wins.
+  isReferralActive() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ref')) return true;
+    try {
+      if (sessionStorage.getItem('pendingRef')) return true;
+    } catch (e) {}
+    return false;
+  },
+
   checkContinueGame() {
+    // Friend-revive/share-link arrivals take priority over restoring a stale run.
+    if (this.isReferralActive()) {
+      console.log('[Continue] Referral/revive link detected — skipping saved-game dialog so the friend-revive flow can proceed');
+      return;
+    }
     if (!this.hasSavedGame()) return;
     var summary = this.getSavedGameSummary();
     if (!summary) return;
