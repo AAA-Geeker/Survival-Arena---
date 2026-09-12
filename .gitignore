@@ -17,3 +17,8 @@ Thumbs.db
 # Python (generator scripts)
 __pycache__/
 *.pyc
+
+# 皮肤渲染验证的临时截图（可随时用 skin-preview.js 重新生成）
+skin-preview/
+portfolio/preview/
+portfolio/build_tmp.*

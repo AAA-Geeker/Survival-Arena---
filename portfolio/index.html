@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生存竞技场 · 武器皮肤分析与创意策划案 | 游戏产品经理</title>
+<style>
+  :root{
+    --bg:#0a0a0f; --bg2:#12151f; --card:#161a26; --card2:#1c2130;
+    --line:#252b3b; --text:#e8ebf2; --muted:#98a2b8; --dim:#6b7488;
+    --accent:#e94560; --accent2:#ff6b8a; --gold:#f0c040; --gem:#a855f7;
+    --green:#34d399; --amber:#fbbf24; --red:#f87171; --blue:#60a5fa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.75;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 28px}
+
+  /* HERO */
+  .hero{padding:86px 0 58px;border-bottom:1px solid var(--line);
+    background:radial-gradient(900px 480px at 12% -10%,rgba(233,69,96,.20),transparent 62%),
+               radial-gradient(760px 420px at 92% 0%,rgba(168,85,247,.16),transparent 62%);}
+  .tag{display:inline-block;font-size:12px;letter-spacing:.14em;color:var(--accent2);
+    border:1px solid rgba(233,69,96,.4);background:rgba(233,69,96,.1);
+    padding:5px 13px;border-radius:999px;margin-bottom:20px;}
+  h1{font-size:42px;line-height:1.24;font-weight:800;letter-spacing:-.02em;margin-bottom:16px}
+  h1 .grad{background:linear-gradient(100deg,#ff6b8a,#f0c040 55%,#a855f7);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero .sub{font-size:16.5px;color:var(--muted);max-width:780px;margin-bottom:26px}
+  .metabar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+  .chip{font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--line);
+    padding:6px 13px;border-radius:8px}
+  .chip b{color:var(--text);font-weight:600}
+
+  section{padding:62px 0;border-bottom:1px solid var(--line)}
+  .sec-head{margin-bottom:32px}
+  .sec-num{font-size:12px;font-weight:700;letter-spacing:.18em;color:var(--accent);margin-bottom:10px;display:block}
+  h2{font-size:27px;font-weight:700;letter-spacing:-.01em;margin-bottom:10px}
+  h3{font-size:17px;font-weight:650;margin-bottom:12px}
+  .sec-desc{color:var(--muted);font-size:15px;max-width:820px}
+  p{color:var(--muted);font-size:14.5px}
+  p+p{margin-top:10px}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;
+    position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;inset:0 auto auto 0;width:100%;height:3px;
+    background:linear-gradient(90deg,var(--accent),transparent)}
+  .stat .num{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+  .stat .lab{font-size:13px;color:var(--muted)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+  .card+.card{margin-top:16px}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  td{color:var(--muted)}
+  td:first-child{color:var(--text);font-weight:550}
+  tr:last-child td{border-bottom:none}
+  .yes{color:var(--green);font-weight:600}
+  .no{color:var(--dim)}
+
+  ul.clean{list-style:none}
+  ul.clean li{position:relative;padding-left:22px;margin-bottom:10px;font-size:14.5px;color:var(--muted)}
+  ul.clean li::before{content:"";position:absolute;left:5px;top:11px;width:6px;height:6px;
+    border-radius:50%;background:var(--accent)}
+  ul.clean li b{color:var(--text);font-weight:600}
+
+  .shot{background:var(--card2);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;margin-bottom:16px}
+  .shot img{width:100%;display:block;border-bottom:1px solid var(--line)}
+  .shot .cap{padding:12px 16px;font-size:13px;color:var(--muted);display:flex;gap:9px;align-items:baseline}
+  .shot .cap b{color:var(--text);font-weight:600;white-space:nowrap}
+
+  .skin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .skin{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    position:relative}
+  .skin::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:currentColor;opacity:.8}
+  .skin.r-common{color:#8fa3b8}.skin.r-rare{color:#4fc3f7}
+  .skin.r-epic{color:#c77dff}.skin.r-legendary{color:#ffb703}
+  .skin .art{background:#0b0d14;padding:10px;text-align:center}
+  .skin .art img{width:100%;max-width:190px;display:block;margin:0 auto}
+  .skin .body{padding:14px 16px 16px}
+  .skin .nm{font-size:15px;font-weight:700;display:flex;justify-content:space-between;
+    align-items:center;gap:8px;margin-bottom:4px}
+  .skin .rar{font-size:10.5px;font-weight:700;letter-spacing:.05em;padding:2px 8px;
+    border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+  .skin .tag{font-size:12.5px;color:var(--accent2);margin-bottom:8px;font-style:italic}
+  .skin .txt{font-size:13px;color:var(--muted);line-height:1.65}
+  .skin .meta{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);
+    font-size:12px;color:var(--dim);display:flex;justify-content:space-between}
+
+  .decision{background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:12px;padding:20px 22px;margin-bottom:15px}
+  .decision h4{font-size:15.5px;margin-bottom:7px;font-weight:650}
+  .decision .q{color:var(--accent2);font-size:12.5px;font-weight:600;margin-bottom:9px}
+  .decision p{font-size:13.5px;margin-bottom:7px}
+  .decision .res{color:var(--green);font-size:13px;font-weight:600;
+    padding-top:8px;border-top:1px dashed var(--line);margin-top:10px}
+
+  .reflect{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22);
+    border-radius:14px;padding:24px}
+  .reflect h3{color:var(--amber);font-size:16.5px;margin-bottom:14px}
+  .reflect .item{padding:13px 0;border-bottom:1px dashed rgba(251,191,36,.16)}
+  .reflect .item:last-child{border-bottom:none;padding-bottom:0}
+  .reflect .item b{display:block;font-size:14px;color:var(--text);margin-bottom:4px}
+  .reflect .item span{font-size:13.5px;color:var(--muted)}
+
+  .note{background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.22);
+    border-radius:12px;padding:16px 18px;font-size:13.5px;color:var(--muted);margin-top:16px}
+  .note b{color:var(--blue)}
+  .warn{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.22);
+    border-radius:12px;padding:16px 18px;font-size:13.5px;color:var(--muted);margin-top:16px}
+  .warn b{color:var(--red)}
+
+  .badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.03em}
+  .b-live{background:rgba(52,211,153,.14);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+  .b-plan{background:rgba(251,191,36,.12);color:var(--amber);border:1px solid rgba(251,191,36,.3)}
+
+  footer{padding:40px 0 56px;text-align:center;color:var(--dim);font-size:13px}
+  footer a{color:var(--accent2);text-decoration:none}
+  footer a:hover{text-decoration:underline}
+
+  @media(max-width:860px){
+    h1{font-size:30px}
+    .grid3,.grid2,.skin-grid{grid-template-columns:1fr}
+    .hero{padding:58px 0 42px}
+    section{padding:46px 0}
+    h2{font-size:22px}
+    table{font-size:12.5px}
+    th,td{padding:9px 7px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="wrap">
+    <span class="tag">实践营课题一 · 游戏产品经理</span>
+    <h1>生存竞技场 · 武器皮肤<br><span class="grad">从审美洞察到商业化落地的完整链路</span></h1>
+    <p class="sub">
+      拆解主流射击游戏的皮肤设计方法论，再回到自己的项目《生存竞技场》，
+      把一套"只有两个颜色的圆"的粗糙皮肤系统，重做成有分层结构、稀有度阶梯与商业化逻辑的皮肤体系。
+      本方案包含：行业拆解报告 + 可直接落地的创意策划案 + 已上线的代码实现。
+    </p>
+    <div class="metabar">
+      <span class="chip">项目 <b>生存竞技场 Survival Arena</b></span>
+      <span class="chip">载体 <b>纯 JS + Canvas 2D 网页射击</b></span>
+      <span class="chip">皮肤数量 <b>6 套 / 4 稀有度</b></span>
+      <span class="chip">状态 <b>已实机验证上线</b></span>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════ 01 项目与问题 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">01 / 起点：一个真实存在的问题</span>
+      <h2>皮肤系统为什么"粗糙"</h2>
+      <p class="sec-desc">
+        先定义问题，再谈方案，否则容易做成"好看但与商业无关"的美术练习。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>改造前：一个皮肤 = 两个十六进制颜色</h3>
+      <p>改造前，整套皮肤系统的数据结构长这样：</p>
+      <p style="font-family:ui-monospace,Consolas,monospace;color:var(--accent2);background:#0b0d14;
+         padding:12px 14px;border-radius:8px;margin-top:10px;font-size:13px;overflow-x:auto">
+        { id:'flame', name:'烈焰使者', color:'#e74c3c', outline:'#c0392b', price:50 }
+      </p>
+      <p style="margin-top:12px">
+        渲染时，这两个值只被用在三个地方：圆的 <code>fillStyle</code>、圆的 <code>strokeStyle</code>、
+        以及中间一个小圆点的颜色。也就是说——<b style="color:var(--text)">六套皮肤，本质上是同一个圆换了六种颜色。</b>
+      </p>
+    </div>
+
+    <div class="grid3" style="margin-top:16px">
+      <div class="stat">
+        <div class="num">2 <span style="font-size:14px;color:var(--muted)">个</span></div>
+        <div class="lab">每套皮肤的全部视觉变量（填充色 + 描边色）</div>
+      </div>
+      <div class="stat">
+        <div class="num">0 <span style="font-size:14px;color:var(--muted)">套</span></div>
+        <div class="lab">有独立视觉概念的皮肤</div>
+      </div>
+      <div class="stat">
+        <div class="num">1 <span style="font-size:14px;color:var(--muted)">档</span></div>
+        <div class="lab">定价梯度（全部 50–150 钻，无价值分层）</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>这个问题的本质不是"不好看"，而是三件事同时缺失</h3>
+      <ul class="clean" style="margin-top:12px">
+        <li><b>缺视觉识别——</b>"暗影刺客"被做成深蓝近黑的圆，而游戏背景本身就是 <code>#0b0d14</code> 近黑。名字承诺了"暗影"，结果玩家自己都看不见自己，这是可读性事故，不是审美问题。</li>
+        <li><b>缺价值阶梯——</b>每套皮肤都只是"换个色"，那么贵的皮肤凭什么贵？没有稀有度、没有独占设计，定价就失去了锚点，玩家也没有"升级欲望"。</li>
+        <li><b>缺拥有感——</b>花钻石买到的是一层色值覆盖，视觉上没有任何"我为你做了额外工作"的信号。玩家能感知到的投入，才是他愿意付费的理由。</li>
+      </ul>
+    </div>
+
+    <div class="shot" style="margin-top:18px">
+      <img src="assets/before-after.png" alt="改造前后对比">
+      <div class="cap"><b>左：改造前｜右：改造后</b>同样是"制式战士／烈焰使者／暗影刺客／霓虹战士"，左列是纯色圆，右列是分层渲染（渐变底盘 + 发光描边 + 结构层 + 能量核）。差别不是"画得更细"，而是从"色值"变成了"设计"。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 02 行业拆解 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">02 / 审美洞察：拆解成功射击游戏的皮肤方法论</span>
+      <h2>主流射击游戏怎么做皮肤分级</h2>
+      <p class="sec-desc">
+        拆了 CS2、VALORANT、Fortnite、Overwatch 2、Apex、COD 六款产品，归纳出三条可复用的设计规律。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>规律一：稀有度不只是颜色，而是一套"价值语言"</h3>
+      <table style="margin-top:12px">
+        <thead><tr><th>游戏</th><th>分级方式</th><th>价格带</th><th>核心机制</th></tr></thead>
+        <tbody>
+          <tr><td>CS2</td><td>7 档稀有度 × 5 档磨损（Float）+ StatTrak/Souvenir</td><td>无官方定价，玩家市场自由成交</td><td>三层正交叠加，制造指数级组合与可交易资产</td></tr>
+          <tr><td>VALORANT</td><td>Select / Deluxe / Premium / Exclusive / Ultra</td><td>约 875 → 2,475 VP/件</td><td>明码标价，档位决定解锁哪些设计组件</td></tr>
+          <tr><td>Fortnite</td><td>Uncommon / Rare / Epic / Legendary</td><td>约 800 → 2,000 V-Bucks</td><td>颜色即稀有度，玩家形成"越亮越贵"直觉</td></tr>
+          <tr><td>Overwatch 2</td><td>Common / Rare / Epic / Legendary</td><td>约 1,000 → 1,900 Coins</td><td>OW2 取消开箱，改为明码直售</td></tr>
+          <tr><td>Apex Legends</td><td>Common → Legendary，外加 Mythic 传家宝</td><td>传家宝约需 500 箱保底</td><td>用极端高客单道具拉高 ARPPU</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <b>可复用结论：</b>稀有度的作用不是"分类"，而是<b>让玩家一眼判断"这东西值多少钱"</b>。
+        CS2 用颜色（蓝→紫→粉→红→金）、VALORANT 用颜色+档位名，本质都是建立一套
+        不需要看价格就能感知价值的符号系统。所以做自己的皮肤时，<b>稀有度必须有独立的视觉色，
+        并且要贯穿卡片、描边、动效三层</b>，而不是只在名字后缀加个"（稀有）"。
+      </div>
+      <div class="note" style="margin-top:12px">
+        <b>数据来源说明：</b>上表 CS2 一行的稀有度档位与色值，已通过公开数据集
+        ByMykel/CSGO-API（共 2,126 条皮肤记录，由 Valve 游戏文件生成）实测核验；
+        VALORANT / Fortnite / Overwatch 2 / Apex 的价格带为行业公开常识，
+        <b>随地区与充值档位浮动，引用前建议核对当日官方商店</b>。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>规律二：一款"完整皮肤"是可拆组件的集合，档位 = 解锁层数</h3>
+      <p>这是 VALORANT 最值得抄的结构。一款皮肤由这些组件构成，越贵的档位解锁越多层：</p>
+      <table style="margin-top:12px">
+        <thead><tr><th>组件</th><th>作用</th><th>从哪档开始有</th></tr></thead>
+        <tbody>
+          <tr><td>基础材质 / 涂装</td><td>让枪"好看"</td><td>最基础档（所有皮肤都有）</td></tr>
+          <tr><td>换弹 / 检视动画</td><td>让枪"有手感"</td><td>Premium 起</td></tr>
+          <tr><td>配色变体（Colorway）</td><td>让玩家"能自定义"</td><td>Premium 起，需额外解锁</td></tr>
+          <tr><td>专属音效 SFX</td><td>听感差异化</td><td>Deluxe 起</td></tr>
+          <tr><td>特效 VFX（枪口/命中/弹道）</td><td>战场存在感</td><td>Premium / Exclusive 完整</td></tr>
+          <tr><td>击杀横幅 / 终结技 Finisher</td><td>让对手看见 → 炫耀</td><td>Exclusive 起</td></tr>
+          <tr><td>等级进化（Reactive）</td><td>随击杀成长，绑定战绩</td><td>Premium 起</td></tr>
+          <tr><td>专属检视动画 / 唯一动画</td><td>顶级身份象征</td><td>Ultra 专属</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <b>可复用结论：</b>分层逻辑是<b>「低档卖好看 → 中档卖手感 → 高档卖炫耀」</b>，
+        每一档精确对应一种心理需求。对《生存竞技场》这种无 3D 骨骼动画、无音效资产的项目，
+        能落地的"层"是：<b>底盘质感 / 内核发光 / 结构装饰 / 能量光晕 / 环绕元素 / 动效密度</b>——
+        正好对应我下面实现的分层渲染结构。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>规律三：让皮肤"随你变强"，是留存而不是审美问题</h3>
+      <p>
+        CS2 的 <b>StatTrak™</b> 把击杀数永久刻在枪身上（公开数据集内 1,274 款皮肤支持）；
+        VALORANT 的 <b>Elderflame</b> 击杀后巨龙张嘴、特效逐级增强，<b>Reaver</b> 的紫色能量随击杀累积。
+        这类"反应型皮肤"的共同点是：<b>把玩家的使用行为，外化成永久可见的视觉资产。</b>
+      </p>
+      <div class="note">
+        <b>为什么这比"好看"更值钱：</b>因为计数器只增不减，玩家会舍不得丢掉一把累积了 5,000 杀的枪——
+        皮肤因此从"装饰品"变成了<b>绑定战绩的收藏品</b>。这是留存机制，不是美术工作。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 03 改进方案 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">03 / 创意策划案：六套皮肤的分层设计</span>
+      <h2>把"换个颜色"改成"一套设计"</h2>
+      <p class="sec-desc">
+        每套皮肤先定一个视觉概念（它要表达什么），再拆成六层渲染结构，最后用稀有度决定动效密度。
+        以下全部为真实游戏内渲染截图，非设计稿。
+      </p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <h3>设计骨架：六层渲染结构（所有皮肤共用，按稀有度增减）</h3>
+      <table style="margin-top:12px">
+        <thead><tr><th>层</th><th>内容</th><th>解决的问题</th></tr></thead>
+        <tbody>
+          <tr><td>L0 可读性底衬</td><td>玩家身下一圈半透明深色垫底</td><td>敌人贴身围攻时，玩家剪影不被淹没（<b>剪影优先</b>）</td></tr>
+          <tr><td>L1 底盘</td><td>中心偏光源的径向渐变，而非纯色</td><td>产生球体体积感，脱离"扁平圆"</td></tr>
+          <tr><td>L2 内核</td><td>高亮能核 + 呼吸脉动</td><td>视觉焦点，让角色"像活的"</td></tr>
+          <tr><td>L3 描边</td><td>亮色/双色描边 + 发光</td><td>暗色皮肤在暗背景上的可读性（暗影刺客的关键）</td></tr>
+          <tr><td>L4 结构装饰</td><td>旋转六边形盾徽 / 装甲分片 / 扫描线 / 电路环</td><td>赋予主题，让皮肤"有内容"而不是"有色块"</td></tr>
+          <tr><td>L5 光效与环饰</td><td>外围光晕、吸积盘旋臂、环绕碎片（加法混合）</td><td>高级感与存在感，稀有度越高越丰富</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="skin-grid">
+      <!-- 制式战士 -->
+      <div class="skin r-common">
+        <div class="art"><img src="assets/skin-1-default.png" alt="制式战士"></div>
+        <div class="body">
+          <div class="nm">制式战士 <span class="rar">普通</span></div>
+          <div class="tag">"标准配发的制式装备"</div>
+          <div class="txt">
+            设计意图：<b>克制</b>。作为基准款，它要"干净但不寒酸"，建立整个皮肤体系的下限。
+            用护甲环 + 左上高光弧表达"精良制式装备"，不加任何光效。
+          </div>
+          <div class="meta"><span>免费 · 初始赠送</span><span>动效：静态</span></div>
+        </div>
+      </div>
+      <!-- 烈焰使者 -->
+      <div class="skin r-rare">
+        <div class="art"><img src="assets/skin-2-flame.png" alt="烈焰使者"></div>
+        <div class="body">
+          <div class="nm">烈焰使者 <span class="rar">稀有</span></div>
+          <div class="tag">"熔岩在装甲里流动"</div>
+          <div class="txt">
+            设计意图：<b>高温与狂暴</b>。用暖色渐变 + 外焰呼吸光晕营造"持续燃烧"感；
+            五条缓慢旋转的熔岩裂纹暗示内部高温。<b>第一套带发光反馈的皮肤，作为付费诱饵。</b>
+          </div>
+          <div class="meta"><span>60 💎</span><span>动效：呼吸 + 旋转</span></div>
+        </div>
+      </div>
+      <!-- 暗影刺客 -->
+      <div class="skin r-rare">
+        <div class="art"><img src="assets/skin-3-shadow.png" alt="暗影刺客"></div>
+        <div class="body">
+          <div class="nm">暗影刺客 <span class="rar">稀有</span></div>
+          <div class="tag">"你只会看到它的眼睛"</div>
+          <div class="txt">
+            设计意图：<b>这是整套方案里最难的一套</b>——因为它必须解决"暗色皮肤在暗背景上看不见"的
+            固有矛盾。解法：放弃靠填充色表达存在感，改用<b>冷紫发光描边 + 三道流动残影 + 面罩下两个浮动光点</b>。
+            名字承诺"暗影"，视觉给的是"黑暗中盯着你的眼睛"。
+          </div>
+          <div class="meta"><span>60 💎</span><span>动效：残影 + 目光游移</span></div>
+        </div>
+      </div>
+      <!-- 霓虹战士 -->
+      <div class="skin r-epic">
+        <div class="art"><img src="assets/skin-4-neon.png" alt="霓虹战士"></div>
+        <div class="body">
+          <div class="nm">霓虹战士 <span class="rar">史诗</span></div>
+          <div class="tag">"赛博体的能量在扫描"</div>
+          <div class="txt">
+            设计意图：<b>全场对比度最高的一套</b>。用加法混合（<code>lighter</code>）做真正的发光体，
+            配合向上流动的扫描线、两层反向旋转的虚线电路环。
+            战术价值：高亮存在感让玩家在混战中更容易定位自己。
+          </div>
+          <div class="meta"><span>90 💎</span><span>动效：发光 + 扫描 + 双环旋转</span></div>
+        </div>
+      </div>
+      <!-- 黄金骑士 -->
+      <div class="skin r-epic">
+        <div class="art"><img src="assets/skin-5-gold.png" alt="黄金骑士"></div>
+        <div class="body">
+          <div class="nm">黄金骑士 <span class="rar">史诗</span></div>
+          <div class="tag">"纯金锻造，战场上的勋章"</div>
+          <div class="txt">
+            设计意图：<b>金属质感</b>。初版用径向渐变，结果是一个"黄色的饼"——
+            因为金属的关键不是颜色，而是<b>沿圆周交替的明暗反射带</b>。
+            改用 24 个扇形逼近锥形渐变（Canvas 无原生 conic gradient），模拟旋转高光；
+            叠加四片装甲分片与中央盾徽+宝石，表达"骑士"的重量感。
+          </div>
+          <div class="meta"><span>120 💎</span><span>动效：旋转高光扫过</span></div>
+        </div>
+      </div>
+      <!-- 虚空领主 -->
+      <div class="skin r-legendary">
+        <div class="art"><img src="assets/skin-6-void.png" alt="虚空领主"></div>
+        <div class="body">
+          <div class="nm">虚空领主 <span class="rar">传说</span></div>
+          <div class="tag">"它从裂缝里带走了战场"</div>
+          <div class="txt">
+            设计意图：<b>体量与压迫感</b>，作为整个体系的"向往型"顶点。
+            三层逆向旋转的吸积盘旋臂营造引力场；五片环绕漂浮的三角碎片（形状语言=破碎/危险）；
+            双色描边 + 脉动奇点核心。<b>视觉半径最大、动效最多，是最高稀有度的合理表达。</b>
+          </div>
+          <div class="meta"><span>200 💎 · 限时</span><span>动效：旋臂 + 碎片环绕 + 脉动</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="shot" style="margin-top:22px">
+      <img src="assets/skins-shop.png" alt="改造后的皮肤商店">
+      <div class="cap"><b>改造后的皮肤商店</b>每张卡片用独立 canvas 实时渲染真实皮肤（不是静态图），稀有度角标 + 主题文案 + 价格分层。玩家在购买前就能看到"它动起来是什么样"。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 04 商业与技术 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">04 / 商业化落地</span>
+      <h2>定价梯度与实现方式</h2>
+    </div>
+
+    <div class="card">
+      <h3>定价重构：从"无梯度"到"四档阶梯"</h3>
+      <table style="margin-top:12px">
+        <thead><tr><th>稀有度</th><th>皮肤</th><th>价格</th><th>动效密度</th><th>定价意图</th></tr></thead>
+        <tbody>
+          <tr><td>普通</td><td>制式战士</td><td>免费</td><td>静态</td><td>基准锚点，让所有付费皮肤都显得"有理由贵"</td></tr>
+          <tr><td>稀有</td><td>烈焰使者 / 暗影刺客</td><td>60 💎</td><td>1 项动效</td><td>首充档：小额即可获得的第一个"升级感"</td></tr>
+          <tr><td>史诗</td><td>霓虹战士 / 黄金骑士</td><td>90–120 💎</td><td>2–3 项动效</td><td>主力档：品质明显跃升，承接大部分付费</td></tr>
+          <tr><td>传说</td><td>虚空领主</td><td>200 💎</td><td>全套动效 + 最大视觉半径</td><td>向往型顶点：制造"看到别人拥有"的欲望落差</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <b>为什么这样定价：</b>原方案 50/50/75/100/150 的梯度太平缓，且与视觉质量无关，
+        玩家无法判断"贵在哪"。重构后<b>价格严格对齐动效密度</b>——多花一档的钱，确实多买到一层动态。
+        这让加价变得可解释，也给了玩家升级的动力。<b>（对应行业规律：定价锚点 + 分层即定价）</b>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:16px">
+      <div class="card">
+        <h3>技术实现要点</h3>
+        <ul class="clean" style="margin-top:10px">
+          <li><b>零美术资源——</b>全部用 Canvas 2D 程序化绘制。项目没有图片资源管线，程序化绘制是唯一可行路径，且天然适配任意分辨率与移动端。</li>
+          <li><b>渐变对象缓存——</b>每帧 <code>createRadialGradient</code> 会触发 GC 抖动，改为按皮肤 key 缓存。</li>
+          <li><b>移动端降级——</b>小屏自动关闭最贵的 <code>shadowBlur</code> 发光，只保留基础分层。</li>
+          <li><b>状态不泄漏——</b>整体用 <code>save/restore</code> 包裹，<code>globalCompositeOperation</code> 修改后必定还原，避免污染后续绘制。</li>
+          <li><b>可读性底衬——</b>在皮肤下层加一圈半透明深色垫底，这是解决"敌人围攻时玩家被淹没"的关键一改。</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>实机验证结果</h3>
+        <ul class="clean" style="margin-top:10px">
+          <li><b>六套皮肤全部渲染正确——</b>逐一取玩家中心像素验证，中心色分别为蓝/橙/紫/绿/金/紫罗兰，与设计一致，无一套渲染空白。</li>
+          <li><b>可读性修复生效——</b>引入底衬后，敌人贴身围攻时玩家中心区域的敌方红色像素由"淹没"降至 0。</li>
+          <li><b>帧率达标——</b>最重的"虚空领主"（特效最多）在无头浏览器 CPU 渲染下实测 58–60 FPS，真机 GPU 更宽裕。</li>
+          <li><b>旧存档兼容——</b>增加了字段回填逻辑，老玩家的皮肤存档不会因数据结构升级而失效。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="warn">
+      <b>诚实说明（边界）：</b>本方案的美术部分为程序化几何渲染，<b>不具备手绘插画的细节表现力</b>——
+      这是"零美术资源"约束下的必然取舍。若后续引入美术，正确路径是把本方案的<b>分层结构</b>作为
+      Sprite 图层的组织规范（每层一张贴图），而不是推翻重做。另外，皮肤购买当前仍走模拟支付流程
+      （<code>confirm()</code> 确认），未接入真实支付网关。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 05 观点 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">05 / 我的观点</span>
+      <h2>什么样的皮肤设计能吸引用户、增加粘性</h2>
+      <p class="sec-desc">
+        这是本课题最想表达的部分——不是"皮肤怎么画好看"，而是"皮肤在产品里承担什么职能"。
+      </p>
+    </div>
+
+    <div class="decision">
+      <div class="q">观点一 · 皮肤卖的不是美术，是"可被看见的自我"</div>
+      <h4>可见性决定价值，而不是精细度</h4>
+      <p><b>论据：</b>CS2 的 AWP | Dragon Lore 之所以能拍到数万美元，不是因为它画得比别的枪细致十倍，而是因为它稀有、可交易、且在别人的视角里能被看到。VALORANT 把最贵的皮肤做了"击杀横幅"——因为击杀瞬间是全场注意力最集中的时刻，这是炫耀半径最大的设计点位。</p>
+      <p><b>推论：</b>设计皮肤前要先问"谁会看到它"。对《生存竞技场》这种俯视角游戏，别人看到你的方式只有一处：<b>你的角色在战场上长什么样</b>。所以我优先投入的是"角色剪影的辨识度"，而不是堆砌细节。反过来，如果一款皮肤做得再精致，但混战中根本认不出来，它的社交价值就是零。</p>
+      <div class="res">→ 落地：把"剪影优先"作为第一原则，专门为解决可读性写了底衬层，而不是先加光效。</div>
+    </div>
+
+    <div class="decision">
+      <div class="q">观点二 · 稀有度的本质是"可解释的价值差"，不是换个颜色</div>
+      <h4>玩家愿意为"看得见的额外投入"付费</h4>
+      <p><b>论据：</b>行业里所有成熟的皮肤分级体系（CS2 的颜色七档、VALORANT 的五档）都有一个共同点：<b>高稀有的皮肤确实多了东西</b>——更多动画、更多特效、更独特的音效。稀有度是对"产品方多投入了成本"的诚实兑现，玩家感受到的不是"你收我更多钱"，而是"这套确实更用心"。</p>
+      <p><b>推论：</b>如果高稀有皮肤和低稀有皮肤在体验上没有本质区别，那么高价就是在收智商税，短期能赚，长期会摧毁玩家对定价的信任。所以我把价格严格绑定动效密度：多花 30 钻石，一定多看到一层动态。这不是美术偏好，是<b>定价诚信</b>。</p>
+      <div class="res">→ 落地：稀有度同时驱动卡片配色、描边强度、动效数量三个维度，让"贵"在视觉上可被验证。</div>
+    </div>
+
+    <div class="decision">
+      <div class="q">观点三 · 真正的粘性来自"皮肤绑定战绩"，而不是皮肤好看</div>
+      <h4>把使用行为外化成资产，才能制造沉没成本</h4>
+      <p><b>论据：</b>CS2 的 StatTrak 计数器是最聪明的留存设计之一——它让"枪"与"我的击杀历史"绑定，只增不减。玩家舍不得丢弃的不是那层涂装，而是<b>倾注在里面的时间</b>。同理，战斗通行证进度、收藏完成度，都是在把"玩过"变成"不舍得离开"。</p>
+      <p><b>推论：</b>纯静态皮肤带来的粘性是有限的——买完就结束。真正能提升留存的，是让皮肤<b>随玩家的行为而改变</b>。这个项目原本完全没有这类机制，皮肤买完即是终点，这是它在留存设计上最大的空缺（也是我认为下一步最该补的）。</p>
+      <div class="res">→ 建议下一步：为皮肤增加"击杀数进化"（如虚空领主随累计击杀增加环绕碎片数量），把皮肤从装饰品升级为战绩容器。</div>
+    </div>
+
+    <div class="decision">
+      <div class="q">观点四 · 在低资源项目里，约束应该成为设计语言，而不是借口</div>
+      <h4>"没有美术资源"反而逼出了更清晰的设计纪律</h4>
+      <p><b>背景：</b>这个项目没有美术，没有图片资源，皮肤只能靠代码画。常规思路会觉得"那只能做得很简陋"。</p>
+      <p><b>判断：</b>恰恰相反。正因为只能用几何图形，我被迫把皮肤拆解成"底盘/内核/描边/结构/光效"这种可复用的结构层——而这种结构化的思路，比"凭感觉画一套图"更接近可规模化的设计系统。它让第 7 套皮肤的开发成本远低于第 1 套，也让"稀有度=层数"这种规则可以被机械地执行。</p>
+      <div class="res">→ 结论：把约束转化为规范（分层结构 + 稀有度规则），是低资源项目做设计系统的正确姿势。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 06 反思 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">06 / 边界与反思</span>
+      <h2>哪些做了，哪些还没做</h2>
+      <p class="sec-desc">说清楚"没做成什么"，比只列成绩更有价值。</p>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr><th>能力</th><th>状态</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>六套皮肤分层渲染</td><td class="yes">已上线</td><td>纯 Canvas 程序化绘制，实机验证六套全部正确渲染</td></tr>
+          <tr><td>稀有度四档体系</td><td class="yes">已上线</td><td>普通/稀有/史诗/传说，贯穿卡片配色与价格</td></tr>
+          <tr><td>商店实时动效预览</td><td class="yes">已上线</td><td>每张卡片独立 canvas 渲染真实皮肤，非静态图</td></tr>
+          <tr><td>可读性底衬（剪影保障）</td><td class="yes">已上线</td><td>解决敌人围攻时玩家被淹没的问题</td></tr>
+          <tr><td>移动端性能降级</td><td class="yes">已上线</td><td>小屏关闭高开销发光层</td></tr>
+          <tr><td>皮肤进化 / 战绩绑定</td><td class="no">未落地</td><td>最能提升留存的方向，本方案只做到静态分层，尚未接入击杀数驱动的动态进化</td></tr>
+          <tr><td>手绘级插画质感</td><td class="no">不具备</td><td>程序化几何渲染的能力边界；引入美术后应按本方案的分层结构组织 Sprite</td></tr>
+          <tr><td>真实支付接入</td><td class="no">规划中</td><td>皮肤购买仍为模拟流程，未接真实支付网关</td></tr>
+          <tr><td>真实用户数据</td><td class="no">暂无</td><td>游戏已上线可访问，但未推广，无真实付费与留存数据可验证</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="reflect" style="margin-top:18px">
+      <h3>做完之后的反思</h3>
+      <div class="item">
+        <b>1. 我一开始差点把它做成"美术练习"</b>
+        <span>最初接到"美化皮肤"的需求，我的第一反应是"怎么画得更好看"。但真正想清楚之后发现，这个系统的病根不是审美，而是<b>皮肤在商业结构里没有位置</b>——没有稀有度，没有价值差，没有拥有感。如果我只把六个圆画得更漂亮，问题一个都没解决。产品经理的价值在于识别"这是结构问题还是表现问题"，而这次是前者。</span>
+      </div>
+      <div class="item">
+        <b>2. 最难的设计决策是"暗影刺客怎么被看见"</b>
+        <span>这套皮肤逼我做了一次真正的取舍：名字要求它"暗"，但游戏背景本身就是暗的，做得越暗越不可玩。最后我的解法是放弃用填充色表达存在感，改用发光描边与光点来"在黑暗里制造存在"。这件事让我理解了一个更普遍的道理——<b>当需求和约束正面冲突时，不要在同一个维度上死磕（把暗色调亮一点），而要换一个维度解决（用光而不是色）。</b></span>
+      </div>
+      <div class="item">
+        <b>3. 我验证自己工作的方式比结果更值得说</b>
+        <span>中途我一度以为"虚空领主"没渲染出来——因为截图里角色所在位置是一团红色。后来我直接读取 canvas 的像素数据，才发现是敌人贴身围攻覆盖了角色，皮肤其实是正常渲染的。这让我意识到：<b>凭截图和直觉判断会得出错误结论，产品判断要建立在可测量的证据上。</b>这个习惯最后反过来让我发现了真正的可读性问题，并做了针对性修复。</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>生存竞技场 Survival Arena · 武器皮肤分析与创意策划案</p>
+    <p style="margin-top:8px">
+      实践营课题一 ｜ 游戏产品经理方向 ｜ 交付物：皮肤分析报告 + 武器皮肤创意策划案
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

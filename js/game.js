@@ -52,6 +52,20 @@ const Storage = {
   }
 };
 
+// Capture friend-revive referral params from the URL IMMEDIATELY on script load.
+// A redirect (http→https, non-www→www, CDN, WeChat proxy, etc.) can strip the query
+// string before the user finishes logging in; backing the params up here — rather than
+// only inside checkReferral (which runs after login) — keeps the referral claimable.
+(function captureReferralParams() {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const ref = p.get('ref'), sid = p.get('sid'), xkey = p.get('xkey');
+    if (ref) sessionStorage.setItem('pendingRef', ref);
+    if (sid) sessionStorage.setItem('pendingSid', sid);
+    if (xkey) sessionStorage.setItem('pendingXkey', xkey);
+  } catch (e) { /* sessionStorage unavailable (private browsing / sandbox) */ }
+})();
+
 // --- Auth System ---
 const Auth = {
   // Simulate server request delay
@@ -1141,15 +1155,19 @@ class Player {
       ctx.fill();
     }
 
-    // Body - use selected skin
-    const skin = game.getCurrentSkin();
-    ctx.fillStyle = skin.color;
-    ctx.strokeStyle = skin.outline;
-    ctx.lineWidth = 2.5;
+    // Body — 由皮肤引擎分层绘制（底盘/描边/内核/光效/环饰/粒子）
+    // 先画一层"可读性底衬"：深色实心垫底 + 高对比描边，
+    // 保证敌人贴身围攻时玩家剪影仍不被淹没（对应策划案"剪影优先"原则）
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = '#05070d';
     ctx.beginPath();
-    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.arc(0, 0, this.radius + 3.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
+    ctx.restore();
+
+    const skin = game.getCurrentSkin();
+    drawSkin(ctx, skin, game._skinClock || 0, this.radius);
 
     // Gun barrel
     ctx.strokeStyle = '#ddd';
@@ -1276,14 +1294,40 @@ const game = {
     this._dailyTargetDate = Storage.get('dailyTargetDate', '');
     this.generateDailyTarget();
 
+    // ── 皮肤系统 v2 ──
+    // 每套皮肤 = 稀有度 + 视觉概念 + 渲染器 + 获取方式
+    // 稀有度决定：动效密度 / 定价档位 / 展示规格（对应策划案的分层逻辑）
     this.skins = Storage.get('skins', [
-      { id: 'default', name: '默认战士', color: '#3498db', outline: '#2980b9', owned: true, price: 0 },
-      { id: 'flame', name: '烈焰使者', color: '#e74c3c', outline: '#c0392b', owned: false, price: 50 },
-      { id: 'shadow', name: '暗影刺客', color: '#2c3e50', outline: '#1a252f', owned: false, price: 50 },
-      { id: 'gold', name: '黄金骑士', color: '#f1c40f', outline: '#d4a017', owned: false, price: 100 },
-      { id: 'neon', name: '霓虹战士', color: '#00ff88', outline: '#00cc6a', owned: false, price: 75 },
-      { id: 'void', name: '虚空领主', color: '#8e44ad', outline: '#6c3483', owned: false, price: 150 },
+      { id: 'default', name: '制式战士', render: 'default', rarity: 'common',
+        color: '#3498db', outline: '#2980b9', owned: true, price: 0,
+        unlock: '初始赠送', tagline: '标准配发的制式装备' },
+      { id: 'flame', name: '烈焰使者', render: 'flame', rarity: 'rare',
+        color: '#e74c3c', outline: '#ff9e00', owned: false, price: 60,
+        unlock: '钻石购买', tagline: '熔岩在装甲里流动' },
+      { id: 'shadow', name: '暗影刺客', render: 'shadow', rarity: 'rare',
+        color: '#2c3e50', outline: '#c77dff', owned: false, price: 60,
+        unlock: '钻石购买', tagline: '你只会看到它的眼睛' },
+      { id: 'neon', name: '霓虹战士', render: 'neon', rarity: 'epic',
+        color: '#00ff88', outline: '#00ff88', owned: false, price: 90,
+        unlock: '钻石购买', tagline: '赛博体的能量在扫描' },
+      { id: 'gold', name: '黄金骑士', render: 'gold', rarity: 'epic',
+        color: '#f1c40f', outline: '#ffe9a8', owned: false, price: 120,
+        unlock: '钻石购买', tagline: '纯金锻造，战场上的勋章' },
+      { id: 'void', name: '虚空领主', render: 'void', rarity: 'legendary',
+        color: '#8e44ad', outline: '#d0aaff', owned: false, price: 200,
+        unlock: '钻石购买 · 限时', tagline: '它从裂缝里带走了战场' },
     ]);
+
+    // 兼容旧存档：补齐新字段，避免老存档的皮肤数据缺 render/rarity 导致渲染空白
+    const RARITY_FALLBACK = { default: 'common', flame: 'rare', shadow: 'rare',
+                              neon: 'epic', gold: 'epic', void: 'legendary' };
+    const RENDER_FALLBACK = { default: 'default', flame: 'flame', shadow: 'shadow',
+                              neon: 'neon', gold: 'gold', void: 'void' };
+    this.skins.forEach(s => {
+      if (!s.render) s.render = RENDER_FALLBACK[s.id] || 'default';
+      if (!s.rarity) s.rarity = RARITY_FALLBACK[s.id] || 'common';
+      if (s.tagline === undefined) s.tagline = '';
+    });
 
     // Check daily reset
     this.checkDailyReset();
@@ -1661,91 +1705,98 @@ const game = {
     // Layer 1: same device
     if (refId === myDeviceId) {
       console.log('[Referral] Self-referral blocked (same device):', refId);
+      this._clearPendingReferral();
       return;
     }
 
     // Layer 2a: same user (sharer xkey) === my cross-device key → self-referral
     if (sharerXkey && crossDeviceKey && sharerXkey === crossDeviceKey) {
       console.log('[Referral] Self-referral blocked (same account across devices — xkey match):', sharerXkey);
+      this._clearPendingReferral();
       return;
     }
 
     // Layer 2b: refId happens to equal my cross-device key (legacy links / edge cases)
     if (crossDeviceKey && refId === crossDeviceKey) {
       console.log('[Referral] Self-referral blocked (cross-device key):', refId);
+      this._clearPendingReferral();
       return;
     }
-
-    // Layer 3: cross-session on same device (catches all player IDs ever used locally)
-    const allLocalIds = Storage.get('allLocalIds', []);
-    if (allLocalIds.includes(refId)) {
-      console.log('[Referral] Self-referral blocked (local history):', refId);
-      return;
-    }
-    // Track this refId locally to prevent future self-referrals
-    if (!allLocalIds.includes(myDeviceId)) {
-      allLocalIds.push(myDeviceId);
-    }
-    allLocalIds.push(refId);
-    if (sharerXkey) allLocalIds.push(sharerXkey);
-    Storage.set('allLocalIds', allLocalIds);
 
     sessionId = sessionId || 'legacy';
 
-    // Dedup key: playerId + sessionId — prevents reuse across different game sessions
+    // Dedup key: playerId + sessionId — each death generates a unique session ID, so
+    // the same friend can help revive the same sharer again on every new death.
     const dedupKey = refId + '::' + sessionId;
+
+    // --- (A) One-time "join via friend link" bonus — granted only once per sharer. ---
     const claimedRefs = Storage.get('claimedRefs', []);
-    // Also check for legacy (pre-session-ID) claims of the same player
-    const alreadyClaimed = claimedRefs.includes(dedupKey) || claimedRefs.includes(refId);
-    if (!alreadyClaimed) {
-      // Give bonus to new player
+    if (!claimedRefs.includes(refId)) {
       this.coins = Storage.get('coins', 0) + 50;
       Storage.set('coins', this.coins);
       this.showToast('🎉 通过好友链接加入！获得 50 金币奖励！');
-
-      // Mark as claimed locally (prevents duplicate claims per session)
-      claimedRefs.push(dedupKey);
+      claimedRefs.push(refId);
       Storage.set('claimedRefs', claimedRefs);
+    }
 
-      // Encode session ID into from_player: "friendId::sessionId"
-      // so the sharer can verify this specific revive session
-      const fromPayload = Storage.getPlayerId() + '::' + sessionId;
+    // --- (B) Revive token write — MUST run for every distinct share session, not just
+    // the first referral. Dedup locally by dedupKey so repeat calls don't re-write the
+    // same session, while new sessions (new sid) still pass through. ---
+    const reviveSessions = Storage.get('reviveSessions', []);
+    if (reviveSessions.includes(dedupKey)) {
+      this._clearPendingReferral();
+      return;
+    }
 
-      // ✅ Write revive token(s) to Supabase so Player A can verify on THEIR device.
-      // Address the token to BOTH the sharer's device playerId AND (when present) their
-      // cross-device key — this is what makes the revive claimable from ANY of Player A's
-      // devices (PC↔PC, mobile↔mobile, PC↔mobile) under the same login.
-      const targets = [refId];
-      if (sharerXkey) targets.push(sharerXkey);
+    // Encode session ID into from_player: "friendId::sessionId"
+    // so the sharer can verify this specific revive session
+    const fromPayload = myDeviceId + '::' + sessionId;
 
-      try {
-        for (const t of targets) {
-          await SupabaseDB.addRevive(fromPayload, t);
-        }
-        console.log('[Referral] ✅ Revive token sent to Supabase for:', targets, 'session:', sessionId);
-      } catch (err) {
-        console.warn('[Referral] Supabase revive write failed, using localStorage fallback:', err.message);
-        // Surface the server-side failure instead of silently pretending revive works.
-        // RLS / permission errors (HTTP 4xx) mean the shared table write is blocked server-side,
-        // so the sharer on ANOTHER device can never see this token — that's a hard break.
-        const isServerBlocked = /^HTTP 4/.test(String(err.message || ''));
-        this.showToast(
-          isServerBlocked
-            ? '⚠️ 好友复活服务暂不可用（服务器拒绝了写入），复活可能无法送达好友'
-            : '⚠️ 网络异常，复活令牌仅保存在本机'
-        );
-        const pendingRevives = Storage.get('pendingRevives', []);
-        for (const t of targets) {
-          pendingRevives.push({ from: fromPayload, to: t, time: Date.now() });
-        }
-        Storage.set('pendingRevives', pendingRevives);
+    // ✅ Write revive token(s) to Supabase so Player A can verify on THEIR device.
+    // Address the token to BOTH the sharer's device playerId AND (when present) their
+    // cross-device key — this is what makes the revive claimable from ANY of Player A's
+    // devices (PC↔PC, mobile↔mobile, PC↔mobile) under the same login.
+    const targets = [refId];
+    if (sharerXkey) targets.push(sharerXkey);
+
+    try {
+      for (const t of targets) {
+        await SupabaseDB.addRevive(fromPayload, t);
       }
+      reviveSessions.push(dedupKey);
+      Storage.set('reviveSessions', reviveSessions);
+      console.log('[Referral] ✅ Revive token sent to Supabase for:', targets, 'session:', sessionId);
+      this.showToast('✅ 已为好友助力复活！');
+    } catch (err) {
+      console.warn('[Referral] Supabase revive write failed, using localStorage fallback:', err.message);
+      // Surface the server-side failure instead of silently pretending revive works.
+      // RLS / permission errors (HTTP 4xx) mean the shared table write is blocked server-side,
+      // so the sharer on ANOTHER device can never see this token — that's a hard break.
+      const isServerBlocked = /^HTTP 4/.test(String(err.message || ''));
+      this.showToast(
+        isServerBlocked
+          ? '⚠️ 好友复活服务暂不可用（服务器拒绝了写入），复活可能无法送达好友'
+          : '⚠️ 网络异常，复活令牌仅保存在本机'
+      );
+      const pendingRevives = Storage.get('pendingRevives', []);
+      for (const t of targets) {
+        pendingRevives.push({ from: fromPayload, to: t, time: Date.now() });
+      }
+      Storage.set('pendingRevives', pendingRevives);
+    }
 
-      // Cleanup sessionStorage after successful processing
+    // Cleanup sessionStorage after processing (success or server-rejected) so a stale
+    // pending referral can't re-trigger on a later login.
+    this._clearPendingReferral();
+  },
+
+  // Clear the sessionStorage backup of referral params.
+  _clearPendingReferral() {
+    try {
       sessionStorage.removeItem('pendingRef');
       sessionStorage.removeItem('pendingSid');
       sessionStorage.removeItem('pendingXkey');
-    }
+    } catch (e) {}
   },
 
   generateShareLink() {
@@ -3513,20 +3564,32 @@ const game = {
   },
 
   showSkins() {
+    const RARITY = {
+      common:    { label: '普通', color: '#8fa3b8' },
+      rare:      { label: '稀有', color: '#4fc3f7' },
+      epic:      { label: '史诗', color: '#c77dff' },
+      legendary: { label: '传说', color: '#ffb703' },
+    };
+
     let html = '';
     this.skins.forEach(skin => {
       const owned = skin.owned;
       const equipped = this.equippedSkin === skin.id;
-      const canBuy = this.gems >= skin.price && !owned;
-      html += `<div class="skin-card ${equipped ? 'selected' : ''} ${(!owned) ? 'locked' : ''}"
+      const rar = RARITY[skin.rarity] || RARITY.common;
+      html += `<div class="skin-card ${equipped ? 'selected' : ''} ${(!owned) ? 'locked' : ''} rarity-${skin.rarity}"
         data-skin="${skin.id}">
-        <div class="skin-preview" style="background:${skin.color}; border:3px solid ${skin.outline}"></div>
+        <span class="skin-rarity" style="color:${rar.color};border-color:${rar.color}55">${rar.label}</span>
+        <canvas class="skin-preview-canvas" data-skin-canvas="${skin.id}" width="160" height="160"></canvas>
         <div class="skin-name">${skin.name}</div>
-        <div class="skin-price">${owned ? (equipped ? '使用中' : '点击装备') : '💎 ' + skin.price}</div>
+        <div class="skin-tagline">${skin.tagline || ''}</div>
+        <div class="skin-price">${owned ? (equipped ? '✓ 使用中' : '点击装备') : '💎 ' + skin.price}</div>
       </div>`;
     });
 
     document.getElementById('skins-grid').innerHTML = html;
+
+    // 启动预览动画（卡片 canvas 上实时渲染真实皮肤效果）
+    this._startSkinPreviewLoop();
 
     document.querySelectorAll('.skin-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -3534,7 +3597,7 @@ const game = {
         const skin = this.skins.find(s => s.id === skinId);
         if (!skin) return;
         if (!skin.owned && this.gems >= skin.price) {
-          if (confirm(`购买皮肤 "${skin.name}" 花费 ${skin.price} 钻石？`)) {
+          if (confirm(`购买皮肤「${skin.name}」\n\n花费 ${skin.price} 💎 永久拥有这套皮肤`)) {
             this.gems -= skin.price;
             skin.owned = true;
             Storage.set('gems', this.gems);
@@ -3542,23 +3605,44 @@ const game = {
             // 📊 埋点：皮肤购买
             Analytics.trackShopPurchase('skin_' + skinId, 'gems', skin.price);
             Analytics.trackSkinSelect(skinId);
-            this.showToast('✅ 皮肤购买成功！');
+            this.showToast('✅ 已获得「' + skin.name + '」');
             this.showSkins();
           }
         } else if (!skin.owned) {
-          this.showToast('💎 钻石不足！');
+          this.showToast(`💎 钻石不足，还差 ${skin.price - this.gems} 颗`);
         } else {
+          if (this.equippedSkin === skinId) return; // 已是当前皮肤
           this.equippedSkin = skinId;
           Storage.set('equippedSkin', skinId);
           // 📊 埋点：切换皮肤
           Analytics.trackSkinSelect(skinId);
-          this.showToast('✅ 皮肤已装备！');
+          this.showToast('✅ 已装备「' + skin.name + '」');
           this.showSkins();
         }
       });
     });
 
     this.showScreen('skins-screen');
+  },
+
+  // 皮肤卡片预览的动画循环（独立 rAF，只在皮肤页可见时运行）
+  _startSkinPreviewLoop() {
+    if (this._skinPreviewRAF) cancelAnimationFrame(this._skinPreviewRAF);
+    const canvases = Array.from(document.querySelectorAll('[data-skin-canvas]'));
+    if (!canvases.length) return;
+
+    const tick = () => {
+      // 页面切走就自动停止，避免后台空转
+      const scr = document.getElementById('skins-screen');
+      if (!scr || scr.classList.contains('hidden')) { this._skinPreviewRAF = null; return; }
+      const t = performance.now();
+      canvases.forEach(cv => {
+        const skin = this.skins.find(s => s.id === cv.dataset.skinCanvas);
+        if (skin) drawSkinPreview(cv, skin, t);
+      });
+      this._skinPreviewRAF = requestAnimationFrame(tick);
+    };
+    this._skinPreviewRAF = requestAnimationFrame(tick);
   },
 
   showToast(msg, duration = 2000, type = 'default') {
@@ -3841,6 +3925,7 @@ const game = {
 
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05); // Cap delta
     this.lastTime = timestamp;
+    this._skinClock = timestamp;   // 皮肤动效时基（毫秒），供分层渲染使用
 
     this.update(dt);
   },

@@ -120,7 +120,9 @@ const SupabaseDB = {
   async checkAllRevivesFor(addresses) {
     if (!addresses || addresses.length === 0) return [];
     const list = Array.from(new Set(addresses));
-    const filter = list.map(a => 'to_player=eq.' + encodeURIComponent(a)).join(',');
+    // PostgREST treats comma-joined `to_player=eq.a,to_player=eq.b` as AND (impossible),
+    // so any query with 2+ identities returned empty. Use the `in.(...)` OR operator instead.
+    const filter = 'to_player=in.(' + list.map(a => encodeURIComponent(a)).join(',') + ')';
     const url = this._base + '?' + filter + '&order=time.desc';
 
     console.log('[DB] SELECT ALL FOR →', list);

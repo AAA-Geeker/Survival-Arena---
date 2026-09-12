@@ -673,23 +673,58 @@ body {
   margin-bottom: 16px;
 }
 .skin-card {
+  position: relative;
   background: rgba(255,255,255,0.05);
   border-radius: 12px;
-  padding: 12px 8px;
+  padding: 16px 8px 10px;
   text-align: center;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: all 0.2s;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+  overflow: hidden;
 }
-.skin-card.selected { border-color: var(--accent); }
-.skin-card.locked { opacity: 0.5; cursor: not-allowed; }
-.skin-card .skin-preview {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  margin: 0 auto 6px;
+/* 稀有度：卡片整体用稀有度色的极淡底色 + 顶部描边，形成"分层感" */
+.skin-card::before {
+  content: "";
+  position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: currentColor; opacity: .75;
 }
-.skin-card .skin-name { font-size: 0.8rem; font-weight: 700; }
-.skin-card .skin-price { font-size: 0.7rem; color: var(--gem); }
+.skin-card.rarity-common    { color: #8fa3b8; }
+.skin-card.rarity-rare      { color: #4fc3f7; }
+.skin-card.rarity-epic      { color: #c77dff; }
+.skin-card.rarity-legendary { color: #ffb703; }
+/* 史诗/传说卡片带一层稀有度色晕光，制造"稀有物品"的价值感 */
+.skin-card.rarity-epic      { background: radial-gradient(120% 90% at 50% 0%, rgba(199,125,255,.16), rgba(255,255,255,.04)); }
+.skin-card.rarity-legendary { background: radial-gradient(120% 90% at 50% 0%, rgba(255,183,3,.20), rgba(255,255,255,.04)); }
+.skin-card:hover { transform: translateY(-3px); }
+.skin-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(124,108,255,.28);
+}
+.skin-card.locked { opacity: .62; }
+.skin-card.locked:hover { opacity: .85; }
+
+/* 稀有度角标 */
+.skin-card .skin-rarity {
+  position: absolute; top: 8px; right: 8px;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: .06em;
+  padding: 2px 7px; border-radius: 999px;
+  border: 1px solid currentColor;
+  background: rgba(0,0,0,.35);
+}
+
+/* 预览：真实渲染的皮肤（canvas），不再是纯色圆 */
+.skin-card .skin-preview-canvas {
+  width: 84px; height: 84px; display: block; margin: 6px auto 4px;
+}
+.skin-card .skin-name { font-size: 0.82rem; font-weight: 700; }
+.skin-card .skin-tagline {
+  font-size: 0.62rem; color: var(--text-dim, #8a93a6);
+  min-height: 1.6em; line-height: 1.25; margin: 2px 0 4px;
+  padding: 0 2px;
+}
+.skin-card .skin-price { font-size: 0.72rem; color: var(--gem); font-weight: 600; }
+.skin-card.selected .skin-price { color: var(--accent); }
 
 /* Friend Modal - Two-Step Verification Flow */
 .friend-content {
@@ -1787,7 +1822,7 @@ body {
   min-height: 44px;
 }
 .daily-day { min-height: 60px; }
-.skin-card { min-height: 80px; }
+.skin-card { min-height: 150px; }
 
 /* ============================================================
    Mobile Death Screen — compact layout for small screens
