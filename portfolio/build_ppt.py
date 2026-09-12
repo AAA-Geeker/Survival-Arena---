@@ -412,7 +412,50 @@ text(s, Inches(6.0), Inches(3.95), Inches(6.4), Inches(2.6),
      spacing=1.3, space_after=2)
 
 # ══════════════════════════════════════════════
-# 11. 商店 UI 改造
+# 11. 真实用户数据看板
+# ══════════════════════════════════════════════
+s = prs.slides.add_slide(BLANK); bg(s)
+header(s, "03.5 / 数据验证", "真实用户数据看板",
+       "关键行为全部客户端埋点 → Supabase 落库 → 看板实时聚合；以下取自生产环境实际数据")
+
+stats = [("79 人", "累计独立玩家", "去重 player_id"),
+         ("133 局", "累计开局对局", "真实对局数"),
+         ("1,996 条", "累计埋点事件", "覆盖 24 个活跃日"),
+         ("56 次", "复活次数", "复活率 42%"),
+         ("31 笔", "商店购买", "付费意愿验证"),
+         ("37%", "移动端事件占比", "双端适配验证")]
+cw = Inches(1.83); gap = Inches(0.14); x0 = Inches(0.92)
+for i, (num, lab, sub) in enumerate(stats):
+    # 两行三列
+    col, row = i % 3, i // 3
+    x = x0 + col * (cw + gap)
+    y = Inches(1.85) + row * Inches(1.15)
+    box(s, x, y, cw, Inches(1.0), fill=CARD, line=LINE, radius=0.06)
+    box(s, x, y, cw, Inches(0.045), fill=ACCENT)
+    text(s, x + Inches(0.22), y + Inches(0.16), cw - Inches(0.4), Inches(0.4), [[(num, 24, TEXT, True)]])
+    text(s, x + Inches(0.22), y + Inches(0.56), cw - Inches(0.4), Inches(0.22), [[(lab, 10.5, MUTED, False)]])
+
+box(s, Inches(6.82), Inches(1.85), Inches(5.6), Inches(2.15), fill=CARD2, line=LINE, radius=0.03)
+pic_fit(s, ASSETS / "dashboard.png", Inches(6.95), Inches(1.95), Inches(5.34), Inches(1.95),)
+
+box(s, Inches(0.92), Inches(4.2), Inches(11.5), Inches(2.6), fill=CARD, line=LINE, radius=0.04)
+text(s, Inches(1.25), Inches(4.4), Inches(10.9), Inches(2.3),
+     [[("从数据里读到的三件事", 14, ACCENT2, True)],
+      [("", 7, MUTED, False)],
+      [("① 双端适配真的有人在用 ", 12, TEXT, True),
+       ("— 移动端 UA 产生 275 条事件、桌面端 725 条，「手机+电脑都能玩」不是宣传语。", 11.5, MUTED, False)],
+      [("② 复活机制是被真实使用的核心循环 ", 12, TEXT, True),
+       ("— 56 次复活中，看广告 38% / 花钻石 25% / 用令牌 21% / 好友助力 16%，四条路径都有人走。", 11.5, MUTED, False)],
+      [("③ 武器使用率 81% 集中在手枪 ", 12, TEXT, True),
+       ("— 最有价值的负面发现：手枪是免费初始武器，说明多数玩家没走到解锁新武器的波次就阵亡了。", 11.5, MUTED, False)],
+      [("", 7, MUTED, False)],
+      [("数据诚实性：", 10.5, AMBER, True),
+       ("死亡波次分布中「第 1 波 109 次」包含开发与自动化测试数据，不能当作真实难度曲线；场均时长同受测试会话影响。", 10.5, DIM, False)],
+      [("玩家数 / 开局数 / 复活数 / 购买数均为按事件去重的真实累计值；比率类指标仅作趋势参考。", 10.5, DIM, False)]],
+     spacing=1.3, space_after=2)
+
+# ══════════════════════════════════════════════
+# 12. 商店 UI 改造
 # ══════════════════════════════════════════════
 s = prs.slides.add_slide(BLANK); bg(s)
 header(s, "03 / 创意策划案", "商店界面：让玩家在买之前就看到「动起来的样子」",
@@ -565,7 +608,7 @@ rows = [("六套皮肤分层渲染", "已上线", True),
         ("皮肤进化 / 战绩绑定", "未落地 · 最能提升留存的方向，尚未接入击杀数驱动的进化", False),
         ("手绘级插画质感", "不具备 · 程序化几何渲染的能力边界", False),
         ("真实支付接入", "规划中 · 皮肤购买仍为模拟流程", False),
-        ("真实用户数据", "暂无 · 游戏已上线未推广，无付费与留存数据", False)]
+        ("真实用户数据", "已有 · 79 名独立玩家 / 133 局 / 1,996 条事件（部分均值受测试数据影响）", True)]
 y = Inches(1.95)
 for name, status, live in rows:
     box(s, Inches(0.92), y, Inches(11.5), Inches(0.54), fill=CARD, line=LINE, radius=0.09)
