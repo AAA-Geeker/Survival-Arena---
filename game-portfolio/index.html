@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生存竞技场 Survival Arena · 游戏介绍</title>
+<style>
+  :root{
+    --bg:#0a0a0f; --bg2:#12151f; --card:#161a26; --card2:#1c2130;
+    --line:#252b3b; --text:#e8ebf2; --muted:#98a2b8; --dim:#6b7488;
+    --accent:#e94560; --accent2:#ff6b8a; --gold:#f0c040; --gem:#a855f7;
+    --green:#34d399; --amber:#fbbf24; --blue:#60a5fa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.75;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 28px}
+
+  /* HERO */
+  .hero{padding:84px 0 54px;border-bottom:1px solid var(--line);
+    background:radial-gradient(900px 480px at 12% -10%,rgba(233,69,96,.22),transparent 62%),
+               radial-gradient(760px 420px at 92% 0%,rgba(168,85,247,.16),transparent 62%)}
+  .tag{display:inline-block;font-size:12px;letter-spacing:.14em;color:var(--accent2);
+    border:1px solid rgba(233,69,96,.4);background:rgba(233,69,96,.1);
+    padding:5px 13px;border-radius:999px;margin-bottom:20px}
+  h1{font-size:44px;line-height:1.22;font-weight:800;letter-spacing:-.02em;margin-bottom:14px}
+  h1 .grad{background:linear-gradient(100deg,#ff6b8a,#f0c040 55%,#a855f7);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero .sub{font-size:17px;color:var(--muted);max-width:770px;margin-bottom:26px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px}
+  a.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:10px;
+    font-size:14.5px;font-weight:600;text-decoration:none;transition:.18s}
+  .btn-primary{background:linear-gradient(100deg,#e94560,#ff6b8a);color:#fff;
+    box-shadow:0 6px 22px rgba(233,69,96,.32)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(233,69,96,.45)}
+  .btn-ghost{background:var(--card);color:var(--text);border:1px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent2)}
+  .metabar{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--line);
+    padding:6px 13px;border-radius:8px}
+  .chip b{color:var(--text);font-weight:600}
+
+  section{padding:60px 0;border-bottom:1px solid var(--line)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{margin-bottom:32px}
+  .sec-num{font-size:12px;font-weight:700;letter-spacing:.18em;color:var(--accent);
+    margin-bottom:10px;display:block}
+  h2{font-size:27px;font-weight:700;letter-spacing:-.01em;margin-bottom:10px}
+  h3{font-size:17px;font-weight:650;margin-bottom:12px}
+  .sec-desc{color:var(--muted);font-size:15px;max-width:820px}
+  p{color:var(--muted);font-size:14.5px}
+  p+p{margin-top:10px}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;
+    position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;inset:0 auto auto 0;width:100%;height:3px;
+    background:linear-gradient(90deg,var(--accent),transparent)}
+  .stat .num{font-size:29px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+  .stat .lab{font-size:13px;color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+  .card+.card{margin-top:16px}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  td{color:var(--muted)}
+  td:first-child{color:var(--text);font-weight:550}
+  tr:last-child td{border-bottom:none}
+
+  ul.clean{list-style:none}
+  ul.clean li{position:relative;padding-left:22px;margin-bottom:10px;font-size:14.5px;color:var(--muted)}
+  ul.clean li::before{content:"";position:absolute;left:5px;top:11px;width:6px;height:6px;
+    border-radius:50%;background:var(--accent)}
+  ul.clean li b{color:var(--text);font-weight:600}
+
+  .shot{background:var(--card2);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;margin-bottom:16px}
+  .shot img{width:100%;display:block;border-bottom:1px solid var(--line)}
+  .shot .cap{padding:12px 16px;font-size:13px;color:var(--muted);display:flex;gap:9px;align-items:baseline}
+  .shot .cap b{color:var(--text);font-weight:600;white-space:nowrap}
+  .shot-pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .shot-pair .shot{margin-bottom:0}
+
+  .step{display:flex;gap:16px;padding:18px 0;border-bottom:1px dashed var(--line)}
+  .step:last-child{border-bottom:none;padding-bottom:0}
+  .step:first-child{padding-top:0}
+  .step-n{flex:0 0 38px;height:38px;border-radius:11px;display:grid;place-items:center;
+    font-size:15px;font-weight:800;background:rgba(233,69,96,.14);
+    border:1px solid rgba(233,69,96,.3);color:var(--accent2)}
+  .step-b h4{font-size:15.5px;font-weight:650;margin-bottom:5px;display:flex;gap:10px;
+    align-items:center;flex-wrap:wrap}
+  .step-b p{font-size:14px}
+
+  .feat{display:flex;gap:16px;padding:18px 0;border-bottom:1px dashed var(--line)}
+  .feat:last-child{border-bottom:none;padding-bottom:0}
+  .feat:first-child{padding-top:0}
+  .feat-ico{flex:0 0 42px;height:42px;border-radius:11px;display:grid;place-items:center;
+    font-size:20px;background:rgba(233,69,96,.14);border:1px solid rgba(233,69,96,.28)}
+  .feat-b h4{font-size:15.5px;font-weight:650;margin-bottom:5px;display:flex;gap:10px;
+    align-items:center;flex-wrap:wrap}
+  .feat-b p{font-size:14px}
+
+  .skin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .skin{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    position:relative}
+  .skin::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;
+    background:currentColor;opacity:.8}
+  .skin.r-common{color:#8fa3b8}.skin.r-rare{color:#4fc3f7}
+  .skin.r-epic{color:#c77dff}.skin.r-legendary{color:#ffb703}
+  .skin .art{background:#0b0d14;padding:10px;text-align:center}
+  .skin .art img{width:100%;max-width:180px;display:block;margin:0 auto}
+  .skin .body{padding:14px 16px 16px}
+  .skin .nm{font-size:15px;font-weight:700;display:flex;justify-content:space-between;
+    align-items:center;gap:8px;margin-bottom:4px}
+  .skin .rar{font-size:10.5px;font-weight:700;letter-spacing:.05em;padding:2px 8px;
+    border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+  .skin .txt{font-size:13px;color:var(--muted);line-height:1.65}
+  .skin .meta{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);
+    font-size:12px;color:var(--dim);display:flex;justify-content:space-between}
+
+  .note{background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.22);
+    border-radius:12px;padding:16px 18px;font-size:13.5px;color:var(--muted);margin-top:16px}
+  .note b{color:var(--blue)}
+  .warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22);
+    border-radius:12px;padding:16px 18px;font-size:13.5px;color:var(--muted);margin-top:16px}
+  .warn b{color:var(--amber)}
+  .badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.03em}
+  .b-live{background:rgba(52,211,153,.14);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+
+  footer{padding:0}
+  @media(max-width:860px){
+    h1{font-size:30px}
+    .grid3,.grid2,.grid4,.skin-grid,.shot-pair{grid-template-columns:1fr}
+    .hero{padding:56px 0 40px}
+    section{padding:44px 0}
+    h2{font-size:22px}
+    table{font-size:12.5px}
+    th,td{padding:9px 7px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="wrap">
+    <span class="tag">浏览器即玩 · 无需下载 · 手机电脑双端</span>
+    <h1>🔥 生存竞技场<br><span class="grad">Survival Arena</span></h1>
+    <p class="sub">
+      一款用原生 JavaScript + Canvas 从零手写的 2D 俯视角波次生存射击游戏。
+      不用下载、不用安装，打开浏览器就能玩——手机和电脑都能玩，死了还能让好友把你救回来。
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://survival-arena.com/" target="_blank" rel="noopener">🎮 立刻开始游玩 →</a>
+      <a class="btn btn-ghost" href="https://survival-arena.com/dashboard.html" target="_blank" rel="noopener">📊 查看数据看板</a>
+    </div>
+    <div class="metabar">
+      <span class="chip">平台 <b>浏览器 / 手机 / 电脑</b></span>
+      <span class="chip">玩法 <b>波次生存射击</b></span>
+      <span class="chip">内容 <b>4 武器 · 5 敌人 · 6 皮肤 · 5 段位</b></span>
+      <span class="chip">状态 <b>已上线可玩</b></span>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════ 01 一句话介绍 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">01 / 这是个什么游戏</span>
+      <h2>一句话说清：点开就打的爽快小游戏</h2>
+      <p class="sec-desc">
+        没有下载、没有安装、没有冗长的注册流程。打开网页，WASD 走动、鼠标瞄准射击，
+        一波一波的敌人冲上来，撑得越久越强。打累了可以停，明天回来还有每日奖励等着你。
+      </p>
+    </div>
+
+    <div class="grid3">
+      <div class="stat">
+        <div class="num">0 <span style="font-size:15px;color:var(--muted)">安装</span></div>
+        <div class="lab">浏览器打开即玩，手机电脑通用</div>
+      </div>
+      <div class="stat">
+        <div class="num">4 <span style="font-size:15px;color:var(--muted)">种</span></div>
+        <div class="lab">武器：手枪 / 霰弹枪 / 冲锋枪 / 狙击枪</div>
+      </div>
+      <div class="stat">
+        <div class="num">5 <span style="font-size:15px;color:var(--muted)">种</span></div>
+        <div class="lab">敌人 + 每 5 波一个 BOSS</div>
+      </div>
+    </div>
+
+    <div class="grid3" style="margin-top:16px">
+      <div class="stat">
+        <div class="num">6 <span style="font-size:15px;color:var(--muted)">款</span></div>
+        <div class="lab">皮肤，4 个稀有度梯度</div>
+      </div>
+      <div class="stat">
+        <div class="num">12 <span style="font-size:15px;color:var(--muted)">项</span></div>
+        <div class="lab">成就徽章 + 每日挑战</div>
+      </div>
+      <div class="stat">
+        <div class="num">4 <span style="font-size:15px;color:var(--muted)">种</span></div>
+        <div class="lab">复活方式，含跨设备好友复活</div>
+      </div>
+    </div>
+
+    <div class="shot" style="margin-top:20px">
+      <img src="assets/02-menu.png" alt="主菜单">
+      <div class="cap"><b>主菜单</b>所有功能收在一个界面：开始战斗、装备升级、每日奖励、排行榜、皮肤。进来就知道该点哪。</div>
+    </div>
+
+    <div class="shot">
+      <img src="assets/01-login.png" alt="登录界面">
+      <div class="cap"><b>登录界面</b>手机号验证码或邮箱登录，首次登录自动注册。没有账号墙，30 秒内就能开始第一局。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 02 玩法流程 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">02 / 怎么玩</span>
+      <h2>从打开到变强，五步走完</h2>
+      <p class="sec-desc">整个游戏循环：进去 → 打 → 变强 → 再来一局。每一步都有明确的正反馈。</p>
+    </div>
+
+    <div class="card">
+      <div class="step">
+        <div class="step-n">1</div>
+        <div class="step-b">
+          <h4>登录进入</h4>
+          <p>支持手机号验证码或邮箱登录，<b>首次登录自动注册</b>，不用填一堆资料，几秒就进游戏。登录后数据云端同步，换设备也能接着玩。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <div class="step-b">
+          <h4>开始战斗</h4>
+          <p>电脑用 WASD 移动 + 鼠标瞄准射击，空格冲刺闪避；手机用左侧虚拟摇杆 + 右侧射击键，还有滑动手势闪避。<b>没打过也能玩，第一波敌人很温和。</b></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <div class="step-b">
+          <h4>击杀敌人、收集星星</h4>
+          <p>打死敌人掉落 ⭐ 星星，波次清空也有奖励。星星是局内货币，<b>用来在暂停菜单买装备、升级武器</b>。连杀还有额外奖励。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">4</div>
+        <div class="step-b">
+          <h4>每 5 波打 BOSS</h4>
+          <p>敌人会越来越强：血更厚、跑更快、伤害更高。<b>第 5、10、15、20 波是 BOSS 战</b>——BOSS 血厚、会远程弹幕攻击，还带护卫小兵。这是每局的压力测试点。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">5</div>
+        <div class="step-b">
+          <h4>阵亡 → 复活 → 变强再来</h4>
+          <p>死了不是结束。可以看广告免费复活、用复活令牌、花钻石，或者<b>邀请好友帮你复活</b>。每局结束记录战绩，金币和钻石跨局累积，用来永久提升属性——<b>下一局永远比这一局更强。</b></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="shot-pair" style="margin-top:18px">
+      <div class="shot">
+        <img src="assets/07-battle.png" alt="开局战斗">
+        <div class="cap"><b>开局</b>手枪起步，敌人从四周涌来</div>
+      </div>
+      <div class="shot">
+        <img src="assets/10-combat.png" alt="战斗实况">
+        <div class="cap"><b>混战</b>屏幕震动 + 粒子特效，越打越密集</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 03 核心功能 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">03 / 核心功能</span>
+      <h2>六个撑起整个游戏的系统</h2>
+      <p class="sec-desc">每个功能都解决一个具体问题，而不是"为了有而有"。</p>
+    </div>
+
+    <div class="card">
+      <h3>① 武器系统 —— 四种枪，各有一套升级树</h3>
+      <p style="margin-bottom:14px">解锁后<b>永久拥有、跨局保留</b>。每把枪有 3 条独立升级路线（伤害 / 射速 / 特殊属性），最高各 10 级。</p>
+      <table>
+        <thead><tr><th>武器</th><th>解锁费用</th><th>特点</th><th>约需局数</th></tr></thead>
+        <tbody>
+          <tr><td>🔫 手枪</td><td>免费</td><td>平衡型，1 发弹丸</td><td>初始</td></tr>
+          <tr><td>💥 霰弹枪</td><td>200 ⭐</td><td>5 发扇形散射，近距离威力巨大</td><td>2–3 局</td></tr>
+          <tr><td>⚡ 冲锋枪</td><td>350 ⭐</td><td>极高射速，弹幕压制</td><td>3–4 局</td></tr>
+          <tr><td>🎯 狙击枪</td><td>500 ⭐</td><td>3 倍伤害，一击制敌</td><td>5–6 局</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>② 三货币经济 —— 每种钱花在不同的地方</h3>
+      <table style="margin-top:10px">
+        <thead><tr><th>货币</th><th>范围</th><th>怎么来</th><th>用来做什么</th></tr></thead>
+        <tbody>
+          <tr><td>⭐ 星星</td><td>局内</td><td>击杀敌人、清波奖励、连杀</td><td>买装备、升武器（武器跨局保留）</td></tr>
+          <tr><td>🪙 金币</td><td>跨局累积</td><td>签到、每日挑战、钻石兑换</td><td>永久提升角色属性、买自动射击</td></tr>
+          <tr><td>💎 钻石</td><td>跨局累积</td><td>充值、签到奖励、成就</td><td>买皮肤、复活、兑换金币/星星</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <b>设计意图：</b>三种货币各管一段——星星管"这一局怎么打"，金币管"长期怎么变强"，钻石管"外观和便利"。
+        这样玩家每一局都有收获，又不会因为一局打崩就白玩。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>③ 皮肤系统 —— 6 款皮肤，4 个稀有度</h3>
+      <p style="margin-bottom:14px">全部用 Canvas 程序化绘制（零美术图片资源），按稀有度分层：普通 / 稀有 / 史诗 / 传说。商店里每张卡片都是<b>实时渲染的动图</b>，不是静态图。</p>
+      <div class="skin-grid">
+        <div class="skin r-common">
+          <div class="art"><img src="assets/skin-1-default.png" alt="制式战士"></div>
+          <div class="body">
+            <div class="nm">制式战士 <span class="rar">普通</span></div>
+            <div class="txt">干净的军事风基准款，护甲环 + 左上高光弧。</div>
+            <div class="meta"><span>免费</span><span>静态</span></div>
+          </div>
+        </div>
+        <div class="skin r-rare">
+          <div class="art"><img src="assets/skin-2-flame.png" alt="烈焰使者"></div>
+          <div class="body">
+            <div class="nm">烈焰使者 <span class="rar">稀有</span></div>
+            <div class="txt">熔岩在装甲里流动，五条缓慢旋转的熔岩裂纹。</div>
+            <div class="meta"><span>60 💎</span><span>呼吸 + 旋转</span></div>
+          </div>
+        </div>
+        <div class="skin r-rare">
+          <div class="art"><img src="assets/skin-3-shadow.png" alt="暗影刺客"></div>
+          <div class="body">
+            <div class="nm">暗影刺客 <span class="rar">稀有</span></div>
+            <div class="txt">暗色底盘靠冷紫发光描边与面罩下两个光点辨识。</div>
+            <div class="meta"><span>60 💎</span><span>残影 + 目光</span></div>
+          </div>
+        </div>
+        <div class="skin r-epic">
+          <div class="art"><img src="assets/skin-4-neon.png" alt="霓虹战士"></div>
+          <div class="body">
+            <div class="nm">霓虹战士 <span class="rar">史诗</span></div>
+            <div class="txt">赛博能量体，扫描线 + 两层反向旋转电路环。</div>
+            <div class="meta"><span>90 💎</span><span>发光 + 扫描</span></div>
+          </div>
+        </div>
+        <div class="skin r-epic">
+          <div class="art"><img src="assets/skin-5-gold.png" alt="黄金骑士"></div>
+          <div class="body">
+            <div class="nm">黄金骑士 <span class="rar">史诗</span></div>
+            <div class="txt">金属反射带旋转扫过，四片装甲 + 中央盾徽宝石。</div>
+            <div class="meta"><span>120 💎</span><span>旋转高光</span></div>
+          </div>
+        </div>
+        <div class="skin r-legendary">
+          <div class="art"><img src="assets/skin-6-void.png" alt="虚空领主"></div>
+          <div class="body">
+            <div class="nm">虚空领主 <span class="rar">传说</span></div>
+            <div class="txt">三层吸积盘旋臂 + 五片环绕三角碎片 + 脉动奇点核心。</div>
+            <div class="meta"><span>200 💎</span><span>全套动效</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="shot" style="margin-top:18px">
+        <img src="assets/live-shop.png" alt="皮肤商店">
+        <div class="cap"><b>皮肤商店（线上实拍）</b>稀有度角标 + 主题文案 + 价格分层；卡片内是实时渲染的皮肤动效。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>④ 好友复活 —— 死了发个链接，朋友把你捞回来</h3>
+      <p style="margin-bottom:14px">游戏最有意思的机制。<b>阵亡后生成一条专属分享链接</b>，发给好友；好友点开进游戏，你就能满血复活并获得 3 秒无敌护盾。双方都有奖励（各 +50 🪙 +5 💎）。</p>
+      <ul class="clean">
+        <li><b>跨设备互通：</b>好友在电脑、你在手机，照样救得回来——不限制同端。</li>
+        <li><b>三层防自刷：</b>设备 ID + 账号哈希 + 本地历史记录，防止自己刷自己。</li>
+        <li><b>四种复活方式：</b>看广告（免费）/ 复活令牌 / 好友助力 / 花钻石，每种每局限用一次。</li>
+      </ul>
+      <div class="shot" style="margin-top:16px">
+        <img src="assets/11-revive.png" alt="好友复活分享">
+        <div class="cap"><b>分享复活</b>两步流程：① 分享链接 → ② 核验复活。链接可一键复制或直接分享到微信/QQ。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>⑤ 成长与竞争 —— 段位、成就、每日挑战</h3>
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <p style="margin-bottom:10px"><b style="color:var(--text)">5 大段位</b>按最高波次解锁：</p>
+          <table>
+            <tbody>
+              <tr><td>🥉 青铜战士</td><td>默认</td></tr>
+              <tr><td>🥈 白银骑士</td><td>到达第 5 波</td></tr>
+              <tr><td>🥇 黄金勇士</td><td>到达第 10 波</td></tr>
+              <tr><td>💎 钻石英雄</td><td>到达第 15 波</td></tr>
+              <tr><td>👑 传说至尊</td><td>到达第 20 波</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <p style="margin-bottom:10px"><b style="color:var(--text)">还有这些长期目标：</b></p>
+          <ul class="clean">
+            <li><b>12 项成就徽章</b>——累计击杀、到达波次、连杀、单局得分、武器收集、连续签到</li>
+            <li><b>每日挑战</b>——按你的水平自动生成分数目标，达成领金币和钻石</li>
+            <li><b>7 天连续签到</b>——第 7 天送大礼包（500 金币 + 5 钻石 + 复活令牌）</li>
+            <li><b>战绩记录</b>——个人最高分、最高波次、总击杀，Top 20 历史排行</li>
+          </ul>
+        </div>
+      </div>
+      <div class="shot-pair" style="margin-top:18px">
+        <div class="shot">
+          <img src="assets/06-rank.png" alt="排行榜">
+          <div class="cap"><b>排行榜</b>段位、战绩、成就墙、每日挑战</div>
+        </div>
+        <div class="shot">
+          <img src="assets/04-daily.png" alt="每日奖励">
+          <div class="cap"><b>每日奖励</b>7 天签到网格，越签越丰厚</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>⑥ 手机的完整适配 —— 不是"能打开"，是"玩得爽"</h3>
+      <ul class="clean" style="margin-top:10px">
+        <li><b>虚拟摇杆：</b>左手拇指推方向，右手点射击，符合手游操作习惯。</li>
+        <li><b>滑动手势闪避：</b>不用找按钮，直接朝想闪的方向一滑。</li>
+        <li><b>竖屏自动提示旋转：</b>横屏体验最佳，竖屏会提示旋转设备。</li>
+        <li><b>刘海屏安全区适配：</b>全面屏手机上按钮不会被挡住。</li>
+        <li><b>自动降载保证流畅：</b>移动端自动降低特效开销，优先保帧率。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 04 上手信息 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">04 / 快速上手</span>
+      <h2>操作方式与游戏信息</h2>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>💻 电脑端操作</h3>
+        <table style="margin-top:10px">
+          <tbody>
+            <tr><td>移动</td><td>W A S D</td></tr>
+            <tr><td>瞄准</td><td>鼠标（360° 自由瞄准）</td></tr>
+            <tr><td>射击</td><td>鼠标左键（可购买自动射击）</td></tr>
+            <tr><td>闪避冲刺</td><td>空格（2 秒冷却）</td></tr>
+            <tr><td>暂停 / 商店</td><td>ESC</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>📱 手机端操作</h3>
+        <table style="margin-top:10px">
+          <tbody>
+            <tr><td>移动</td><td>左侧虚拟摇杆</td></tr>
+            <tr><td>瞄准 / 射击</td><td>右侧射击键 + 触控瞄准</td></tr>
+            <tr><td>闪避冲刺</td><td>滑动手势</td></tr>
+            <tr><td>换武器</td><td>右下角切换按钮</td></tr>
+            <tr><td>暂停</td><td>右上角暂停键</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>游戏内数值一览</h3>
+      <div class="grid4" style="margin-top:12px">
+        <div><p><b style="color:var(--text);font-size:15px">5</b> 种敌人</p><p style="font-size:13px">小兵 / 疾行者 / 重装兵 / 射手 / BOSS</p></div>
+        <div><p><b style="color:var(--text);font-size:15px">每 5 波</b> 一个 BOSS</p><p style="font-size:13px">BOSS 会远程弹幕 + 带护卫</p></div>
+        <div><p><b style="color:var(--text);font-size:15px">3 条</b> 升级路线 / 武器</p><p style="font-size:13px">伤害 / 射速 / 特殊，各 10 级</p></div>
+        <div><p><b style="color:var(--text);font-size:15px">5 项</b> 属性永久升级</p><p style="font-size:13px">生命 / 移速 / 攻击 / 射速 / 金币加成</p></div>
+      </div>
+    </div>
+
+    <div class="shot-pair" style="margin-top:18px">
+      <div class="shot">
+        <img src="assets/08-pause-weapons.png" alt="暂停菜单装备">
+        <div class="cap"><b>暂停菜单</b>随时换武器、买装备、升属性</div>
+      </div>
+      <div class="shot">
+        <img src="assets/03-shop.png" alt="装备与升级商店">
+        <div class="cap"><b>商店</b>金币升属性、钻石换货币、星星解锁武器</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 05 开发与技术 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">05 / 开发与技术复盘</span>
+      <h2>一个人从零写完的完整游戏</h2>
+      <p class="sec-desc">
+        这不是套模板的项目——没有用任何游戏引擎、没有任何美术素材。
+        碰撞检测、粒子特效、波次系统、BOSS 战、武器升级树、移动端触控全部手写。
+      </p>
+    </div>
+
+    <div class="grid3">
+      <div class="stat">
+        <div class="num">8,600+</div>
+        <div class="lab">行手写代码（JS + CSS + HTML）</div>
+      </div>
+      <div class="stat">
+        <div class="num">0</div>
+        <div class="lab">第三方框架 / 游戏引擎</div>
+      </div>
+      <div class="stat">
+        <div class="num">60 <span style="font-size:15px;color:var(--muted)">fps</span></div>
+        <div class="lab">移动端实测帧率（最重特效皮肤）</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>技术选择与理由</h3>
+      <table style="margin-top:12px">
+        <thead><tr><th>技术点</th><th>实现方式</th><th>为什么这么做</th></tr></thead>
+        <tbody>
+          <tr><td>渲染</td><td>Canvas 2D + requestAnimationFrame 自研游戏循环</td><td>零依赖，任何浏览器直接跑，包体最小</td></tr>
+          <tr><td>框架</td><td>纯 Vanilla JS，无 React / Vue / jQuery</td><td>游戏状态高频变更，虚拟 DOM 反而是负担</td></tr>
+          <tr><td>后端</td><td>Supabase REST API 直连（未装 SDK）</td><td>好友复活要跨设备同步，又不想引依赖</td></tr>
+          <tr><td>数据埋点</td><td>客户端事件采集 → 批量上报 → 实时看板</td><td>用真实数据驱动决策，而不是凭感觉调参</td></tr>
+          <tr><td>皮肤美术</td><td>全部程序化 Canvas 绘制（渐变/发光/粒子）</td><td>项目没有美术资源，用代码画反而能做得更系统</td></tr>
+          <tr><td>移动端</td><td>虚拟摇杆 + 触控手势 + 性能自动降级</td><td>手游用户占三分之一，必须真能玩</td></tr>
+          <tr><td>离线可用</td><td>Service Worker 缓存</td><td>网络差时也能加载</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid2" style="margin-top:16px">
+      <div class="card">
+        <h3>做了数据埋点，用真实数据说话</h3>
+        <p style="margin-bottom:10px">所有关键行为（开局、死亡、复活、广告、购买、签到、成就）都在客户端埋点，落到 Supabase 后在看板实时聚合。</p>
+        <ul class="clean">
+          <li>累计 <b>1,996 条</b>埋点事件，覆盖 <b>24 个活跃日</b></li>
+          <li>累计 <b>133 局</b>对局，<b>56 次</b>复活</li>
+          <li>商店购买中 <b>71% 是皮肤</b>——玩家愿意为外观付费</li>
+          <li>移动端事件占 <b>35%</b>，验证双端适配确有用户</li>
+        </ul>
+        <div class="note">
+          <b>数据驱动的一个例子：</b>数据显示 <b>92% 的开局都用手枪</b>（免费初始武器），
+          说明多数玩家还没打到能解锁新武器的波次就阵亡了。这直接指向"前期难度偏高 / 武器解锁门槛偏贵"的调优方向。
+        </div>
+      </div>
+      <div class="card">
+        <h3>过程中踩过的坑（真实复盘）</h3>
+        <ul class="clean">
+          <li><b>好友复活怎么跨设备？</b>换设备后身份标识不一样，最初救不回来。解法：登录时额外生成一个由账号派生的跨设备标识，复活令牌同时投递给设备 ID 和账号标识，两条路任一命中即算成功。</li>
+          <li><b>数据库权限把功能卡死了。</b>Supabase 建表向导默认只给"已登录"角色写权限，但游戏客户端用的是匿名密钥，导致写入被拒。解法：显式给匿名角色授予最小必要权限。</li>
+          <li><b>暗色皮肤在暗背景上看不见。</b>"暗影刺客"名字要求它暗，但战场本身就是近黑色。解法：不靠填充色表达存在感，改用发光描边与光点。</li>
+          <li><b>敌人围攻时玩家被淹没。</b>实测截图里角色位置只剩一团红。解法：给玩家加一层深色底衬，保证剪影永远可辨。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="shot" style="margin-top:16px">
+      <img src="assets/dashboard.png" alt="真实数据看板">
+      <div class="cap"><b>线上数据看板</b>实时读取 Supabase 事件表并聚合。左侧复活转化漏斗、死亡波次分布、登录方式；右侧复活方式占比、武器使用分布、商店购买排行。可访问 <a href="https://survival-arena.com/dashboard.html" target="_blank" rel="noopener" style="color:var(--accent2)">survival-arena.com/dashboard.html</a></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>项目结构</h3>
+      <table style="margin-top:12px">
+        <thead><tr><th>文件</th><th>内容</th><th>规模</th></tr></thead>
+        <tbody>
+          <tr><td>js/game.js</td><td>游戏引擎：实体系统、游戏循环、波次、BOSS、商店、UI</td><td>~4,770 行</td></tr>
+          <tr><td>js/skins.js</td><td>皮肤程序化渲染引擎（6 套皮肤 + 分层绘制）</td><td>~460 行</td></tr>
+          <tr><td>css/style.css</td><td>全部样式 + 响应式 + 触控布局</td><td>~1,940 行</td></tr>
+          <tr><td>js/supabase-db.js</td><td>Supabase REST 封装（好友复活跨设备同步）</td><td>~190 行</td></tr>
+          <tr><td>js/analytics.js</td><td>事件埋点与批量上报</td><td>~190 行</td></tr>
+          <tr><td>dashboard.html</td><td>独立数据看板（实时读取线上数据）</td><td>~430 行</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warn">
+      <b>诚实的边界：</b>皮肤购买目前仍是模拟流程（点确认即到账），未接入真实支付网关；
+      广告用的是 Monetag 真实广告位；数据看板里的"死亡波次分布""场均时长"等指标包含开发与自动化测试期间的数据，
+      不作为真实难度曲线引用。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 06 结尾 ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">06 / 来试试</span>
+      <h2>不用下载，现在就能玩</h2>
+      <p class="sec-desc">建议先用电脑玩一局熟悉操作，再用手机试试跨设备好友复活。</p>
+    </div>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://survival-arena.com/" target="_blank" rel="noopener">🎮 开始游玩 →</a>
+      <a class="btn btn-ghost" href="https://survival-arena.com/dashboard.html" target="_blank" rel="noopener">📊 数据看板</a>
+      <a class="btn btn-ghost" href="https://github.com/AAA-Geeker/Survival-Arena---" target="_blank" rel="noopener">💻 开源代码</a>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

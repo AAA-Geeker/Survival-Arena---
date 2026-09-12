@@ -22,3 +22,5 @@ __pycache__/
 skin-preview/
 portfolio/preview/
 portfolio/build_tmp.*
+game-portfolio/preview/
+game-portfolio/build_tmp.*
