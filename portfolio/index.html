@@ -429,12 +429,12 @@
 
     <div class="grid3">
       <div class="stat">
-        <div class="num">79 <span style="font-size:15px;color:var(--muted)">人</span></div>
-        <div class="lab">累计独立玩家（去重 player_id）</div>
+        <div class="num">160+ <span style="font-size:15px;color:var(--muted)">人</span></div>
+        <div class="lab">累计独立用户（去重 player_id，已剔除测试账号）</div>
       </div>
       <div class="stat">
-        <div class="num">133 <span style="font-size:15px;color:var(--muted)">局</span></div>
-        <div class="lab">累计开局对局数</div>
+        <div class="num">47 <span style="font-size:15px;color:var(--muted)">人</span></div>
+        <div class="lab">实际下场玩过的玩家</div>
       </div>
       <div class="stat">
         <div class="num">1,996 <span style="font-size:15px;color:var(--muted)">条</span></div>
@@ -444,6 +444,10 @@
 
     <div class="grid3" style="margin-top:16px">
       <div class="stat">
+        <div class="num">133 <span style="font-size:15px;color:var(--muted)">局</span></div>
+        <div class="lab">累计开局对局数</div>
+      </div>
+      <div class="stat">
         <div class="num">56 <span style="font-size:15px;color:var(--muted)">次</span></div>
         <div class="lab">复活次数（复活率 42%）</div>
       </div>
@@ -451,9 +455,20 @@
         <div class="num">31 <span style="font-size:15px;color:var(--muted)">笔</span></div>
         <div class="lab">商店购买（付费意愿验证）</div>
       </div>
+    </div>
+
+    <div class="grid3" style="margin-top:16px">
       <div class="stat">
-        <div class="num">37% <span style="font-size:15px;color:var(--muted)"></span></div>
+        <div class="num">35% <span style="font-size:15px;color:var(--muted)"></span></div>
         <div class="lab">移动端事件占比（双端适配验证）</div>
+      </div>
+      <div class="stat">
+        <div class="num">92% <span style="font-size:15px;color:var(--muted)"></span></div>
+        <div class="lab">开局使用手枪的比例（新手留存预警）</div>
+      </div>
+      <div class="stat">
+        <div class="num">24 <span style="font-size:15px;color:var(--muted)">天</span></div>
+        <div class="lab">数据覆盖的活跃天数（7/17 – 9/12）</div>
       </div>
     </div>
 
@@ -463,18 +478,23 @@
     </div>
 
     <div class="card">
-      <h3>从数据里读到的三件事</h3>
+      <h3>从数据里读到的四件事</h3>
       <ul class="clean" style="margin-top:12px">
-        <li><b>双端适配真的有人在用——</b>移动端 UA 产生了 275 条事件、桌面端 725 条，说明"手机+电脑都能玩"不是一句宣传语，而是有真实移动端用户在跑。</li>
+        <li><b>双端适配真的有人在用——</b>移动端 UA 产生了 701 条事件、桌面端 1,295 条（移动端占 35%），说明"手机+电脑都能玩"不是一句宣传语，而是有真实移动端用户在跑。</li>
         <li><b>复活机制是被真实使用的核心循环——</b>56 次复活里，看广告 38%、花钻石 25%、用令牌 21%、好友助力 16%。四种复活方式都有人用，说明"死亡不惩罚、给多条出路"的设计站住了。</li>
-        <li><b>武器使用率 81% 集中在手枪——</b>这是最有价值的负面发现。手枪是免费初始武器，说明大部分玩家根本没走到能解锁霰弹枪/冲锋枪的波次就阵亡了。这直接指向"前期难度过高 / 武器解锁门槛偏贵"的调优方向。</li>
+        <li><b>武器使用率 92% 集中在手枪——</b>这是最有价值的负面发现。133 次开局中手枪占 122 次（霰弹枪 4、冲锋枪 5、狙击枪 2），而手枪是免费初始武器。说明绝大多数玩家根本没走到能解锁新武器的波次就阵亡了，直接指向"前期难度过高 / 武器解锁门槛偏贵"的调优方向。</li>
+        <li><b>皮肤占商店购买的 71%——</b>31 笔购买中 22 笔是皮肤（烈焰使者 7、虚空领主 4、黄金骑士 4、霓虹战士 3、暗影刺客 2）。在开发者本人测试之外，玩家愿意为"外观"而不是"数值"付费——这是本次皮肤改造最直接的正向验证。</li>
       </ul>
       <div class="warn" style="margin-top:16px">
         <b>数据诚实性说明：</b>看板中"死亡波次分布"显示第 1 波死亡 109 次，占比异常高——
         这部分包含开发与自动化测试期间产生的数据，<b>不能直接当作真实难度曲线</b>。
         同理"场均时长"指标也受测试会话（长时挂机）影响而偏高。
-        本页引用的玩家数、开局数、复活数、购买数均为按事件去重的<b>真实累计值</b>；
-        涉及比率与均值的指标则仅作趋势参考。
+        <br><br>
+        <b>关于"用户数"的口径（重要）：</b>累计独立用户约 <b>160+ 人</b>，其中
+        <b>实际下场玩过的只有 47 人</b>，其余是只浏览页面或登录但未开局的访问者。
+        看板顶部还显示过一个"74"——那是第三种统计口径（按事件会话聚合）。
+        <b>三个数字不等价</b>，引用时必须注明口径，否则容易夸大用户规模。
+        本页除"独立用户数"外，开局数 / 复活数 / 购买数 / 事件总数均为按事件去重的真实累计值。
       </div>
       <div class="note">
         <b>数据看板入口：</b><code>dashboard.html</code>（与游戏同目录，随 Pages 一起部署）。
@@ -608,7 +628,7 @@
           <tr><td>皮肤进化 / 战绩绑定</td><td class="no">未落地</td><td>最能提升留存的方向，本方案只做到静态分层，尚未接入击杀数驱动的动态进化</td></tr>
           <tr><td>手绘级插画质感</td><td class="no">不具备</td><td>程序化几何渲染的能力边界；引入美术后应按本方案的分层结构组织 Sprite</td></tr>
           <tr><td>真实支付接入</td><td class="no">规划中</td><td>皮肤购买仍为模拟流程，未接真实支付网关</td></tr>
-          <tr><td>真实用户数据</td><td class="yes">已有</td><td>累计 79 名独立玩家、133 局对局、1,996 条埋点事件，覆盖 24 个活跃日；但玩家规模仍小，且部分均值指标受测试数据影响</td></tr>
+          <tr><td>真实用户数据</td><td class="yes">已有</td><td>累计 160+ 名独立用户、133 局对局、1,996 条埋点事件，覆盖 24 个活跃日（其中 47 人实际下场玩过）；部分均值指标受测试数据影响</td></tr>
         </tbody>
       </table>
     </div>
